@@ -1,0 +1,45 @@
+.cade {
+    height: 100%;
+    width: 100%;
+    position: relative;
+}
+.cade-header {
+    height: 50px;
+    box-shadow: 0 2px 10px -3px rgba(0, 0, 0, 0.1);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    z-index: 99;
+}
+.cade-body {
+    height: 100%;
+    z-index: 50;
+}
+.cade-side {
+    width: 200px;
+    height: 100%;
+    float: left;
+    border-right: 1px solid rgba(0, 0, 0, 0.1);
+    background-color: #f5f5f5;
+    padding: 15px;
+}
+.cade-side-item {
+    margin-bottom: 10px;
+    cursor: move;
+    user-select: none;
+}
+.cade-rect {
+    width: 100%;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #5dafff;
+    background-color: #e7f7ff;
+    font-size: 14px;
+    text-align: center;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+}
+#cade-content {
+    float: left;
+    height: 100%;
+    width: calc(100% - 200px);
+}
+#cade-canvas {
+}
