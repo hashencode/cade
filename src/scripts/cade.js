@@ -10,6 +10,7 @@ class Cade {
       height: stageHeight
     });
   }
+
   // 创建矩形
   drawRect() {
     const rectGroup = new Konva.Group();
@@ -54,6 +55,7 @@ class Cade {
     layer.add(this.drawPoints(rect));
     this.stage.add(layer);
   }
+
   // 绘制连接点
   drawPoints(_ctx) {
     // 多个点合集
@@ -105,11 +107,18 @@ class Cade {
         x: axisArray[i].x,
         y: axisArray[i].y
       });
+      // 鼠标按下时设置对鼠标移动的监听
       _pgClone.on("mousedown", evt => {
         evt.cancelBubble = true;
+        console.log(evt);
         this.stage.on("mousemove", moveEvt => {
           this.drawLine([evt.evt.offsetX, evt.evt.offsetY, moveEvt.evt.offsetX, moveEvt.evt.offsetY]);
         });
+        // 鼠标抬起时销毁鼠标移动的监听
+        this.stage.on('mouseup',upEvt=>{
+          this.stage.off('mousemove');
+          console.log('hi')
+        })
       });
       _pgClone.on("mouseenter", () => {
         this.stage.container().style.cursor = "crosshair";
@@ -121,6 +130,8 @@ class Cade {
     }
     return pointsGroup;
   }
+
+  // 绘制连线
   drawLine(_points) {
     if (this.stage.find(".Line").length > 0) {
       this.stage.find(".Line")[0].attrs.points = _points;
@@ -140,10 +151,5 @@ class Cade {
     }
   }
 }
-
-const myCade = new Cade();
-myCade.stageInit();
-myCade.drawRect();
-myCade.drawRect();
 
 export { Cade };
