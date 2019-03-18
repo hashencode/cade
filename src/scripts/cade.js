@@ -1,11 +1,10 @@
 class Cade {
-  stage;
   // 初始化 Stage
   stageInit() {
     const stageDom = document.querySelector("#cade-content");
     const stageWidth = stageDom.clientWidth;
     const stageHeight = stageDom.clientHeight;
-    this.stage = new Konva.Stage({
+    this["stage"] = new Konva.Stage({
       container: "cade-content",
       width: stageWidth,
       height: stageHeight
@@ -13,12 +12,10 @@ class Cade {
   }
   // 创建矩形
   drawRect() {
-    const rectGroup = new Konva.Group({
-      x: 0,
-      y: 0,
+    const rectGroup = new Konva.Group();
+    const layer = new Konva.Layer({
       draggable: true
     });
-    const layer = new Konva.Layer();
     // 绘制文字
     const rectText = new Konva.Text({
       x: 0,
@@ -43,18 +40,28 @@ class Cade {
       shadowColor: "black",
       shadowBlur: 10,
       shadowOffset: { x: 0, y: 0 },
-      shadowOpacity: 0.15
+      shadowOpacity: 0.1
     });
-    this.cursorMove(rectText);
+    rectText.on("mouseenter", () => {
+      this.stage.container().style.cursor = "move";
+    });
+    rectText.on("mouseleave", () => {
+      this.stage.container().style.cursor = "default";
+    });
     rectGroup.add(rect);
     rectGroup.add(rectText);
-    this.drawPoints(rect, rectGroup);
     layer.add(rectGroup);
+    layer.add(this.drawPoints(rect));
     this.stage.add(layer);
   }
   // 绘制连接点
-  drawPoints(_ctx, _group) {
+  drawPoints(_ctx) {
+    // 多个点合集
+    const pointsGroup = new Konva.Group({
+      name: "pointsGroup"
+    });
     const _attr = _ctx.attrs;
+    // 单个点合集
     const pointGroup = new Konva.Group();
     const pointRing = new Konva.Ring({
       x: 0,
@@ -74,45 +81,69 @@ class Cade {
       margin: 10,
       name: "Point"
     });
-    pointGroup.add(pointCircle);
+    // 鼠标移入时填充蓝色，移出时填充白色
+    pointCircle.on("mouseenter", evt => {
+      evt.target.fill("#5dafff");
+      evt.currentTarget.parent.draw();
+    });
+    pointCircle.on("mouseleave", evt => {
+      evt.target.fill("white");
+      evt.currentTarget.parent.draw();
+    });
     pointGroup.add(pointRing);
+    pointGroup.add(pointCircle);
+    // 节点坐标
     const axisArray = [
       { x: _attr.x, y: _attr.y + _attr.height / 2 },
       { x: _attr.x + _attr.width, y: _attr.y + _attr.height / 2 },
       { x: _attr.x + _attr.width / 2, y: 0 },
       { x: _attr.x + _attr.width / 2, y: _attr.height }
     ];
+    // 将节点插入group
     for (let i = 0; i < 4; i++) {
-      const _clone = pointGroup.clone({
+      const _pgClone = pointGroup.clone({
         x: axisArray[i].x,
         y: axisArray[i].y
       });
-      _clone.on("mousedown", evt => {
+      _pgClone.on("mousedown", evt => {
         evt.cancelBubble = true;
+        this.stage.on("mousemove", moveEvt => {
+          this.drawLine([evt.evt.offsetX, evt.evt.offsetY, moveEvt.evt.offsetX, moveEvt.evt.offsetY]);
+        });
       });
-      _group.add(_clone);
-      this.cursorCrosshair(_clone);
+      _pgClone.on("mouseenter", () => {
+        this.stage.container().style.cursor = "crosshair";
+      });
+      _pgClone.on("mouseleave", () => {
+        this.stage.container().style.cursor = "default";
+      });
+      pointsGroup.add(_pgClone);
     }
+    return pointsGroup;
   }
-  // 鼠标样式修改
-  cursorMove(_ctx) {
-    _ctx.on("mouseenter", () => {
-      this.stage.container().style.cursor = "move";
-    });
-    _ctx.on("mouseleave", () => {
-      this.stage.container().style.cursor = "default";
-    });
-  }
-  cursorCrosshair(_ctx) {
-    _ctx.on("mouseenter", () => {
-      this.stage.container().style.cursor = "crosshair";
-    });
-    _ctx.on("mouseleave", () => {
-      this.stage.container().style.cursor = "default";
-    });
+  drawLine(_points) {
+    if (this.stage.find(".Line").length > 0) {
+      this.stage.find(".Line")[0].attrs.points = _points;
+      this.stage.find(".Line")[0].parent.draw();
+    } else {
+      const layer = new Konva.Layer();
+      const line = new Konva.Line({
+        points: _points,
+        stroke: "#5dafff",
+        lineCap: "round",
+        lineJoin: "round",
+        dash: [5],
+        name: "Line"
+      });
+      layer.add(line);
+      this.stage.add(layer);
+    }
   }
 }
 
 const myCade = new Cade();
 myCade.stageInit();
 myCade.drawRect();
+myCade.drawRect();
+
+export { Cade };
