@@ -1,3 +1,4 @@
+const strokeColor = '#5dafff',fillColor='#e7f7ff';
 class Cade {
   // 初始化 Stage
   stageInit() {
@@ -11,11 +12,17 @@ class Cade {
     });
   }
 
-  // 创建矩形
-  drawRect() {
+  // 生成唯一ID
+  randomID(){
+    return Number(Math.random().toString().substr(3,13) + Date.now()).toString(36);
+  }
+
+  // 创建块
+  drawBlock() {
     const rectGroup = new Konva.Group();
     const layer = new Konva.Layer({
-      draggable: true
+      draggable: true,
+      id: this.randomID()
     });
     // 绘制文字
     const rectText = new Konva.Text({
@@ -26,7 +33,6 @@ class Cade {
       fontSize: 14,
       padding: 15,
       align: "center",
-      name: "Part"
     });
     // 绘制矩形
     const rect = new Konva.Rect({
@@ -34,8 +40,8 @@ class Cade {
       y: 0,
       width: 170,
       height: rectText.height(),
-      fill: "#e7f7ff",
-      stroke: "#5dafff",
+      fill: fillColor,
+      stroke: strokeColor,
       strokeWidth: 1,
       cornerRadius: 4,
       shadowColor: "black",
@@ -59,9 +65,7 @@ class Cade {
   // 绘制连接点
   drawPoints(_ctx) {
     // 多个点合集
-    const pointsGroup = new Konva.Group({
-      name: "pointsGroup"
-    });
+    const pointsGroup = new Konva.Group();
     const _attr = _ctx.attrs;
     // 单个点合集
     const pointGroup = new Konva.Group();
@@ -70,7 +74,7 @@ class Cade {
       y: 0,
       innerRadius: 5,
       outerRadius: 11,
-      fill: "#5dafff",
+      fill: strokeColor,
       opacity: 0
     });
     const pointCircle = new Konva.Circle({
@@ -78,14 +82,13 @@ class Cade {
       y: 0,
       radius: 5,
       fill: "white",
-      stroke: "#5dafff",
+      stroke: strokeColor,
       strokeWidth: 1,
-      margin: 10,
-      name: "Point"
+      margin: 10
     });
     // 鼠标移入时填充蓝色，移出时填充白色
     pointCircle.on("mouseenter", evt => {
-      evt.target.fill("#5dafff");
+      evt.target.fill(strokeColor);
       evt.currentTarget.parent.draw();
     });
     pointCircle.on("mouseleave", evt => {
@@ -105,19 +108,22 @@ class Cade {
     for (let i = 0; i < 4; i++) {
       const _pgClone = pointGroup.clone({
         x: axisArray[i].x,
-        y: axisArray[i].y
+        y: axisArray[i].y,
+        id:this.randomID()
       });
       // 鼠标按下时设置对鼠标移动的监听
       _pgClone.on("mousedown", evt => {
         evt.cancelBubble = true;
-        console.log(evt);
+        // 为每一条线设置唯一ID
+        const lineID = this.randomID();
+        // 获取到当前point的中心位置
+        const currentPointPos = evt.currentTarget.absolutePosition();
         this.stage.on("mousemove", moveEvt => {
-          this.drawLine([evt.evt.offsetX, evt.evt.offsetY, moveEvt.evt.offsetX, moveEvt.evt.offsetY]);
+          this.drawLine([currentPointPos.x, currentPointPos.y, moveEvt.evt.offsetX, moveEvt.evt.offsetY],lineID);
         });
         // 鼠标抬起时销毁鼠标移动的监听
         this.stage.on('mouseup',upEvt=>{
           this.stage.off('mousemove');
-          console.log('hi')
         })
       });
       _pgClone.on("mouseenter", () => {
@@ -126,26 +132,29 @@ class Cade {
       _pgClone.on("mouseleave", () => {
         this.stage.container().style.cursor = "default";
       });
+      _pgClone.zIndex(4);
       pointsGroup.add(_pgClone);
     }
     return pointsGroup;
   }
 
   // 绘制连线
-  drawLine(_points) {
-    if (this.stage.find(".Line").length > 0) {
-      this.stage.find(".Line")[0].attrs.points = _points;
-      this.stage.find(".Line")[0].parent.draw();
+  drawLine(_points,_id) {
+    const lineByID = this.stage.find(`#${_id}`);
+    if (lineByID.length>0) {
+      lineByID[0].attrs.points = _points;
+      lineByID[0].parent.draw();
     } else {
       const layer = new Konva.Layer();
       const line = new Konva.Line({
         points: _points,
-        stroke: "#5dafff",
+        stroke: strokeColor,
         lineCap: "round",
         lineJoin: "round",
         dash: [5],
-        name: "Line"
+        id:_id
       });
+      line.zIndex(5);
       layer.add(line);
       this.stage.add(layer);
     }
