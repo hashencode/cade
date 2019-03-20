@@ -4,5 +4,11 @@ import { Cade } from './src/scripts/cade';
 
 const myCade = new Cade();
 myCade.stageInit();
-myCade.drawBlock();
-myCade.drawBlock();
+myCade.drawBlock({
+  x: 100,
+  y: 100
+});
+myCade.drawBlock({
+  x: 200,
+  y: 200
+});
