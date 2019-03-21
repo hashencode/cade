@@ -1,12 +1,21 @@
 const strokeColor = '#5dafff',
   fillColor = '#e7f7ff',
-  lineColor = '#ababab';
+  lineColor = '#abb7c5';
 class Cade {
   constructor() {
-    this.stage = undefined;
+    this.stage = null;
     this.lineDrawing = false;
-    this.lineStartPoint = undefined;
-    this.lineEndPoint = undefined;
+    this.lineStartPoint = null;
+    this.lineEndPoint = null;
+  }
+
+  // 生成唯一ID
+  randomID() {
+    return Number(
+      Math.random()
+        .toString()
+        .substr(3, 10) + Date.now()
+    ).toString(36);
   }
 
   // 初始化 Stage
@@ -25,21 +34,13 @@ class Cade {
     this.stage.add(this.lineLayer);
   }
 
-  // 生成唯一ID
-  randomID() {
-    return Number(
-      Math.random()
-        .toString()
-        .substr(3, 13) + Date.now()
-    ).toString(36);
-  }
-
   // 创建块
   drawBlock(config) {
     const blockGroup = new Konva.Group({
       x: config.x,
       y: config.y,
-      draggable: true
+      draggable: true,
+      name: 'blockGroup'
     });
     // 绘制文字
     const blockText = new Konva.Text({
@@ -49,7 +50,8 @@ class Cade {
       width: 170,
       fontSize: 14,
       padding: 15,
-      align: 'center'
+      align: 'center',
+      name: 'blockText'
     });
     // 绘制框体
     const rect = new Konva.Rect({
@@ -66,39 +68,69 @@ class Cade {
       shadowOffset: { x: 0, y: 0 },
       shadowOpacity: 0.5
     });
-    blockText.on('mouseenter', () => {
-      this.stage.container().style.cursor = 'move';
-    });
-    blockText.on('mouseleave', () => {
-      this.stage.container().style.cursor = 'default';
-    });
     blockGroup.add(rect);
     blockGroup.add(blockText);
     blockGroup.add(this.drawPoints(rect));
     this.blockLayer.add(blockGroup);
     this.blockLayer.draw();
+    this.blockEventBind(blockGroup);
+  }
+
+  // 为block绑定事件
+  blockEventBind(currentBlock) {
+    if (currentBlock) {
+      this.blockEvent(currentBlock);
+    } else {
+      this.blockLayer.find('.blockGroup').each(item => {
+        this.blockEvent(item);
+      });
+    }
+  }
+
+  blockEvent(currentBlock) {
+    currentBlock.on('dragmove', () => {
+      if (currentBlock.hasOwnProperty('importLine') && currentBlock.importLine.length > 0) {
+        currentBlock.importLine.map(item => {
+          const _line = this.lineLayer.findOne(`#${item}`);
+          const _pointPos = this.blockLayer.findOne(`#${_line.getAttr('endPoint')}`).absolutePosition();
+          _line.setAttr(
+            'points',
+            _line
+              .getAttr('points')
+              .slice(0, 2)
+              .concat([_pointPos.x, _pointPos.y])
+          );
+        });
+      }
+      this.lineLayer.draw();
+    });
+    currentBlock.find('.blockText').on('mouseenter', () => {
+      this.stage.container().style.cursor = 'move';
+    });
+    currentBlock.find('.blockText').on('mouseleave', () => {
+      this.stage.container().style.cursor = 'default';
+    });
   }
 
   // 绘制连接点
   drawPoints(_ctx) {
     // 多个点合集
-    const pointsGroup = new Konva.Group({
-      name: 'pointsGroup'
+    const pointContainer = new Konva.Group({
+      name: 'pointContainer'
     });
     const _attr = _ctx.attrs;
     // 单个点合集
     const pointGroup = new Konva.Group({
-      id: this.randomID(),
       name: 'pointGroup'
     });
-    const pointRing = new Konva.Ring({
+    const pointCircleRing = new Konva.Ring({
       x: 0,
       y: 0,
       innerRadius: 5,
       outerRadius: 11,
       fill: strokeColor,
       opacity: 0,
-      name: 'pointRing'
+      name: 'pointCircleRing'
     });
     const pointCircle = new Konva.Circle({
       x: 0,
@@ -109,19 +141,7 @@ class Cade {
       strokeWidth: 1,
       name: 'pointCircle'
     });
-    // 鼠标移入时填充蓝色，移出时填充白色
-    pointCircle.on('mouseenter', event => {
-      // 当前如果是在画线，则不设置监听
-      if (this.lineDrawing) return false;
-      event.target.fill(strokeColor);
-      event.currentTarget.parent.draw();
-    });
-    pointCircle.on('mouseleave', event => {
-      if (this.lineDrawing) return false;
-      event.target.fill('white');
-      event.currentTarget.parent.draw();
-    });
-    pointGroup.add(pointRing);
+    pointGroup.add(pointCircleRing);
     pointGroup.add(pointCircle);
     // 节点坐标
     const axisArray = [
@@ -137,86 +157,128 @@ class Cade {
         y: axisArray[i].y,
         id: this.randomID()
       });
-      _pointGroupClone.on('mouseenter', enterEvent => {
-        this.lineStartPoint = enterEvent.currentTarget;
-        // 判断当前是否处于绘线状态，如果不是，则创建dropCircle，并添加拖拽事件监听
-        if (this.lineDrawing) {
-        } else {
-          const startPointTarget = this.lineStartPoint.absolutePosition();
-          let dropCircleGroup = this.stage.find('#dropCircleGroup');
-          if (dropCircleGroup.length > 0) {
-            dropCircleGroup.each(dcItem => {
-              dcItem.destroy();
-            });
+      this.pointGroupEventBind(_pointGroupClone);
+      pointContainer.add(_pointGroupClone);
+    }
+    return pointContainer;
+  }
+
+  // 为pointGroup绑定事件
+  pointGroupEventBind(currentPointGroup) {
+    if (currentPointGroup) {
+      this.pointGroupEvent(currentPointGroup);
+    } else {
+      this.blockLayer.find('.pointGroup').each(item => {
+        this.pointGroupEvent(item);
+      });
+    }
+  }
+
+  pointGroupEvent(_pointGroup) {
+    _pointGroup.on('mouseenter', enterEvent => {
+      this.lineStartPoint = enterEvent.currentTarget;
+      // 判断当前是否处于绘线状态，如果不是，则创建dropCircle，并添加拖拽事件监听
+      if (this.lineDrawing) {
+      } else {
+        const startPointTarget = this.lineStartPoint.absolutePosition();
+        let dropCircleGroup = this.stage.findOne('.dropCircleGroup');
+        if (dropCircleGroup) {
+          dropCircleGroup.destroy();
+        }
+        dropCircleGroup = new Konva.Group({
+          x: startPointTarget.x,
+          y: startPointTarget.y,
+          draggable: true,
+          name: 'dropCircleGroup'
+        });
+        // 用于拖拽的点
+        const dropCircle = new Konva.Circle({
+          radius: 5,
+          fill: 'red',
+          stroke: strokeColor,
+          strokeWidth: 1,
+          name: 'dropCircle'
+        });
+        const dropCircleRing = new Konva.Ring({
+          innerRadius: 5,
+          outerRadius: 11,
+          fill: strokeColor,
+          opacity: 0,
+          name: 'dropCircleRing'
+        });
+        dropCircleGroup.on('dragstart', () => {
+          this.lineDrawing = true;
+          this.stage.container().style.cursor = 'crosshair';
+          this.pointCircleRingVisiableSwitch(true);
+        });
+        dropCircleGroup.on('dragmove', event => {
+          const touchShape = this.blockLayer.getIntersection(this.stage.getPointerPosition(), 'Group');
+          if (touchShape && touchShape.getAttr('name') === 'pointGroup') {
+            this.lineEndPoint = touchShape._id === this.lineStartPoint._id ? null : touchShape;
+          } else {
+            this.lineEndPoint = null;
           }
-          dropCircleGroup = new Konva.Group({
-            x: startPointTarget.x,
-            y: startPointTarget.y,
-            draggable: true,
-            id: 'dropCircleGroup'
-          });
-          // 用于拖拽的点
-          const dropCircle = new Konva.Circle({
-            radius: 5,
-            fill: 'red',
-            stroke: strokeColor,
-            strokeWidth: 1,
-            name: 'dropCircle'
-          });
-          const dropCircleRing = new Konva.Ring({
-            innerRadius: 5,
-            outerRadius: 11,
-            fill: strokeColor,
-            opacity: 0,
-            name: 'dropCircleRing'
-          });
-          const lineID = this.randomID();
-          dropCircleGroup.on('dragstart', () => {
-            this.lineDrawing = true;
-            this.pointRingVisiableSwitch(true, enterEvent.currentTarget.attrs.id);
-          });
-          dropCircleGroup.on('dragmove', event => {
-            const gropPosition = event.currentTarget.absolutePosition();
-            this.drawDashLine([startPointTarget.x, startPointTarget.y, gropPosition.x, gropPosition.y], lineID);
-          });
-          dropCircleGroup.on('dragend', () => {
-            this.pointRingVisiableSwitch(false, enterEvent.currentTarget.attrs.id);
-          });
-          dropCircleGroup.add(dropCircle);
-          dropCircleGroup.add(dropCircleRing);
-          this.lineLayer.add(dropCircleGroup);
-          this.lineLayer.on('drop', () => {
-            console.log('hi');
+          const gropPosition = event.currentTarget.absolutePosition();
+          this.drawDashLine([startPointTarget.x, startPointTarget.y, gropPosition.x, gropPosition.y]);
+        });
+        dropCircleGroup.on('dragend', () => {
+          this.lineLayer.findOne('.dropCircleGroup').destroy();
+          this.stage.container().style.cursor = 'default';
+          this.pointCircleRingVisiableSwitch(false);
+          this.lineDrawing = false;
+          // 清除虚线
+          const lineByName = this.lineLayer.find(`.dashLine`);
+          lineByName.each(item => {
+            item.destroy();
           });
           this.lineLayer.draw();
-        }
-      });
-      _pointGroupClone.on('mouseleave', event => {
-        event.cancelBubble = true;
-      });
-      pointsGroup.add(_pointGroupClone);
-    }
-    return pointsGroup;
+          if (this.lineEndPoint) {
+            const lineID = this.drawArrowLine();
+            // 返回arrow line的id，根据矢量方向，分别设置importLine和exportLine
+            const startBlock = this.lineStartPoint.findAncestor('.blockGroup');
+            if (startBlock.hasOwnProperty('exportLine')) {
+              startBlock.exportLine.push(lineID);
+            } else {
+              startBlock['exportLine'] = [lineID];
+            }
+            const endBlock = this.lineEndPoint.findAncestor('.blockGroup');
+            if (endBlock.hasOwnProperty('importLine')) {
+              endBlock.importLine.push(lineID);
+            } else {
+              endBlock['importLine'] = [lineID];
+            }
+          }
+        });
+        dropCircleGroup.add(dropCircle);
+        dropCircleGroup.add(dropCircleRing);
+        this.lineLayer.add(dropCircleGroup);
+        this.lineLayer.draw();
+      }
+    });
+    _pointGroup.on('mouseleave', event => {
+      event.cancelBubble = true;
+    });
   }
 
   // point环的显隐
-  pointRingVisiableSwitch(visiable, layerID = null) {
-    this.blockLayer.find('.pointRing').each(item => {
-      if (item.parent.attrs.id != layerID) {
-        item.opacity(visiable ? 0.5 : 0);
-      }
+  pointCircleRingVisiableSwitch(visiable) {
+    this.blockLayer.find('.pointContainer').each(pcItem => {
+      pcItem.find('.pointCircleRing').each(item => {
+        if (item._id !== this.lineStartPoint.findOne('.pointCircleRing')._id) {
+          item.opacity(visiable ? 0.5 : 0);
+        }
+      });
     });
     this.blockLayer.draw();
   }
 
   // 绘制连线
-  drawDashLine(_points, _lineID) {
+  drawDashLine(_points) {
     const _pointsArray = _points;
-    this.stage.container().style.cursor = 'crosshair';
-    const lineByID = this.lineLayer.find(`#${_lineID}`);
-    if (lineByID.length > 0) {
-      lineByID[0].attrs.points = _pointsArray;
-      lineByID[0].parent.draw();
+    const lineByName = this.lineLayer.findOne(`.dashLine`);
+    if (lineByName) {
+      lineByName.setAttr('points', _pointsArray);
+      lineByName.getParent().draw();
     } else {
       const line = new Konva.Line({
         points: _pointsArray,
@@ -224,27 +286,10 @@ class Cade {
         lineCap: 'round',
         lineJoin: 'round',
         dash: [5],
-        id: _lineID
+        name: 'dashLine'
       });
       this.lineLayer.add(line);
     }
-
-    this.stage.on('mouseup', () => {
-      // // 鼠标抬起时销毁鼠标移动的监听
-      // this.stage.off('mousemove mouseup');
-      // // 取消绘线状态
-      // this.lineDrawing = false;
-      // // 设置鼠标样式
-      // this.stage.container().style.cursor = 'default';
-      // // 消除pointRing样式
-      // this.pointRingVisiableSwitch(false);
-      // this.lineStartPoint.find('.pointCircle')[0].fill('white');
-      // this.stage.find(`#${_lineID}`)[0].destroy();
-      // if (this.lineEndPoint && this.lineStartPoint.attrs.id !== this.lineEndPoint.attrs.id) {
-      //   this.drawArrowLine();
-      // }
-      // this.stage.draw();
-    });
   }
 
   drawArrowLine() {
@@ -257,11 +302,16 @@ class Cade {
       ],
       stroke: lineColor,
       fill: lineColor,
-      pointerLength: 8,
+      pointerLength: 6,
       pointerWidth: 5,
+      startPoint: this.lineStartPoint.getAttr('id'),
+      endPoint: this.lineEndPoint.getAttr('id'),
+      name: 'arrowLine',
       id: this.randomID()
     });
     this.lineLayer.add(line);
+    this.lineLayer.draw();
+    return line.getAttr('id');
   }
 }
 
