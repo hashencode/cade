@@ -9,6 +9,6 @@ myCade.drawBlock({
   y: 100
 });
 myCade.drawBlock({
-  x: 200,
-  y: 200
+  x: 400,
+  y: 400
 });

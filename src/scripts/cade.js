@@ -102,6 +102,13 @@ class Cade {
           );
         });
       }
+      if (currentBlock.hasOwnProperty('exportLine') && currentBlock.exportLine.length > 0) {
+        currentBlock.exportLine.map(item => {
+          const _line = this.lineLayer.findOne(`#${item}`);
+          const _pointPos = this.blockLayer.findOne(`#${_line.getAttr('startPoint')}`).absolutePosition();
+          _line.setAttr('points', [_pointPos.x, _pointPos.y].concat(_line.getAttr('points').slice(2)));
+        });
+      }
       this.lineLayer.draw();
     });
     currentBlock.find('.blockText').on('mouseenter', () => {
@@ -145,16 +152,17 @@ class Cade {
     pointGroup.add(pointCircle);
     // 节点坐标
     const axisArray = [
-      { x: _attr.x, y: _attr.y + _attr.height / 2 },
-      { x: _attr.x + _attr.width, y: _attr.y + _attr.height / 2 },
-      { x: _attr.x + _attr.width / 2, y: 0 },
-      { x: _attr.x + _attr.width / 2, y: _attr.height }
+      { x: _attr.x + _attr.width / 2, y: 0, direction: 'top' },
+      { x: _attr.x + _attr.width, y: _attr.y + _attr.height / 2, direction: 'right' },
+      { x: _attr.x + _attr.width / 2, y: _attr.height, direction: 'bottom' },
+      { x: _attr.x, y: _attr.y + _attr.height / 2, direction: 'left' }
     ];
     // 将节点插入group
     for (let i = 0; i < 4; i++) {
       const _pointGroupClone = pointGroup.clone({
         x: axisArray[i].x,
         y: axisArray[i].y,
+        direction: axisArray[i].direction,
         id: this.randomID()
       });
       this.pointGroupEventBind(_pointGroupClone);
@@ -194,16 +202,12 @@ class Cade {
         // 用于拖拽的点
         const dropCircle = new Konva.Circle({
           radius: 5,
-          fill: 'red',
-          stroke: strokeColor,
           strokeWidth: 1,
           name: 'dropCircle'
         });
         const dropCircleRing = new Konva.Ring({
           innerRadius: 5,
           outerRadius: 11,
-          fill: strokeColor,
-          opacity: 0,
           name: 'dropCircleRing'
         });
         dropCircleGroup.on('dragstart', () => {
@@ -219,7 +223,8 @@ class Cade {
             this.lineEndPoint = null;
           }
           const gropPosition = event.currentTarget.absolutePosition();
-          this.drawDashLine([startPointTarget.x, startPointTarget.y, gropPosition.x, gropPosition.y]);
+          // this.drawDashLine([startPointTarget.x, startPointTarget.y, gropPosition.x, gropPosition.y]);
+          this.drawDashLine(gropPosition);
         });
         dropCircleGroup.on('dragend', () => {
           this.lineLayer.findOne('.dropCircleGroup').destroy();
@@ -273,33 +278,63 @@ class Cade {
   }
 
   // 绘制连线
-  drawDashLine(_points) {
-    const _pointsArray = _points;
+  drawDashLine(mousePos) {
     const lineByName = this.lineLayer.findOne(`.dashLine`);
+    const linePos = this.lineStartPoint.absolutePosition();
+    // 对比宽高，设置不同的显示方式
+    const _width = Math.abs(mousePos.x - linePos.x),
+      _height = Math.abs(mousePos.y - linePos.y);
+    let cornerX, cornerY;
+    if (_width >= _height) {
+      cornerX = mousePos.x - linePos.x >= 0 ? linePos.x + _width : linePos.x - _width;
+      cornerY = linePos.y;
+    } else {
+      cornerX = linePos.x;
+      cornerY = mousePos.y - linePos.y >= 0 ? linePos.y + _height : linePos.y - _height;
+    }
+    // 判断当前是否已经存在虚线，如果存在则更新而不创建
     if (lineByName) {
-      lineByName.setAttr('points', _pointsArray);
+      lineByName.setAttrs({ points: [linePos.x, linePos.y, cornerX, cornerY, mousePos.x, mousePos.y] });
       lineByName.getParent().draw();
     } else {
       const line = new Konva.Line({
-        points: _pointsArray,
+        points: [linePos.x, linePos.y, cornerX, cornerY, mousePos.x, mousePos.y],
         stroke: strokeColor,
-        lineCap: 'round',
-        lineJoin: 'round',
-        dash: [5],
-        name: 'dashLine'
+        name: 'dashLine',
+        dash: [5]
       });
       this.lineLayer.add(line);
     }
   }
 
   drawArrowLine() {
+    this.getExtendCornerPos('start');
+    this.getExtendCornerPos('end');
+    const startAttr = this.lineStartPoint.attrs,
+      endAttr = this.lineEndPoint.attrs;
+    const crossPointArray = [{ x: startAttr.absX, y: endAttr.absY }, { x: endAttr.absX, y: startAttr.absY }];
+
+    // const line = new Konva.Arrow({
+    //   points: [this.lineStartPoint.getAttr('absX'), this.lineStartPoint.getAttr('absY')].concat(
+    //     this.lineStartPoint.getAttr('extendCorner'),
+    //     this.gerCenterCornerPos(),
+    //     this.lineEndPoint.getAttr('extendCorner'),
+    //     [this.lineEndPoint.getAttr('absX'), this.lineEndPoint.getAttr('absY')]
+    //   ),
+    //   stroke: lineColor,
+    //   fill: lineColor,
+    //   pointerLength: 6,
+    //   pointerWidth: 5,
+    //   startPoint: this.lineStartPoint.getAttr('id'),
+    //   endPoint: this.lineEndPoint.getAttr('id'),
+    //   name: 'arrowLine',
+    //   id: this.randomID(),
+    //   lineCap: 'round',
+    //   lineJoin: 'round'
+    // });
+
     const line = new Konva.Arrow({
-      points: [
-        this.lineStartPoint.absolutePosition().x,
-        this.lineStartPoint.absolutePosition().y,
-        this.lineEndPoint.absolutePosition().x,
-        this.lineEndPoint.absolutePosition().y
-      ],
+      points: [],
       stroke: lineColor,
       fill: lineColor,
       pointerLength: 6,
@@ -307,11 +342,77 @@ class Cade {
       startPoint: this.lineStartPoint.getAttr('id'),
       endPoint: this.lineEndPoint.getAttr('id'),
       name: 'arrowLine',
-      id: this.randomID()
+      id: this.randomID(),
+      lineCap: 'round',
+      lineJoin: 'round'
     });
-    this.lineLayer.add(line);
+    const firestLine = line.clone({
+      points: [startAttr.absX, startAttr.absY].concat([crossPointArray[0].x, crossPointArray[0].y], [endAttr.absX, endAttr.absY])
+    });
+    const secondLine = line.clone({
+      points: [startAttr.absX, startAttr.absY].concat([crossPointArray[1].x, crossPointArray[1].y], [endAttr.absX, endAttr.absY])
+    });
+
+    this.lineLayer.add(firestLine);
+    this.lineLayer.add(secondLine);
+    this.lineStartPoint.findAncestor('.pointContainer').children.each(item => {
+      console.log(firestLine.intersects(item.absolutePosition()));
+    });
+
     this.lineLayer.draw();
-    return line.getAttr('id');
+
+    // return line.getAttr('id');
+  }
+
+  getExtendCornerPos(pointType) {
+    const point = pointType === 'start' ? this.lineStartPoint : this.lineEndPoint;
+    const pointPos = point.absolutePosition();
+    const extendDistance = 20;
+    let cornerPos;
+    switch (point.getAttr('direction')) {
+      case 'top':
+        cornerPos = [pointPos.x, pointPos.y - extendDistance];
+        break;
+      case 'right':
+        cornerPos = [pointPos.x + extendDistance, pointPos.y];
+        break;
+      case 'bottom':
+        cornerPos = [pointPos.x, pointPos.y + extendDistance];
+        break;
+      case 'left':
+        cornerPos = [pointPos.x - extendDistance, pointPos.y];
+        break;
+    }
+    point.setAttrs({
+      extendCorner: cornerPos,
+      absX: pointPos.x,
+      absY: pointPos.y
+    });
+  }
+
+  gerCenterCornerPos() {
+    const startAttr = this.lineStartPoint.attrs,
+      endAttr = this.lineEndPoint.attrs;
+    const crossPointArray = [{ x: startAttr.x, y: endAttr.y }, { x: endAttr.x, y: startAttr.y }];
+    // console.log(this.lineStartPoint.findAncestor('.pointContainer'));
+
+    // // 判断结束点相对于起始点的方位
+    // if (this.lineStartPoint.getAttr('absX') - this.lineEndPoint.getAttr('absX')) {
+    //   // 结束点在起始点的右侧
+    // }
+    // const startAttr = this.lineStartPoint.attrs,
+    //   endAttr = this.lineEndPoint.attrs;
+    // if (startAttr.direction === 'top' || endAttr.direction === 'bottom') {
+    //   // return [startAttr.extendCorner[0], endAttr.extendCorner[1]];
+    // } else {
+    //   // 当起始点是左右两点时，判断结束点的位置
+    //   const absPos = startAttr.absX - endAttr.absX > 0 ? 'left' : 'right';
+    //   if (startAttr.direction === endAttr.direction && endAttr.direction === absPos) {
+    //     // 使用特殊的连接方式
+    //   } else {
+    //     return startAttr.x - endAttr.x>0?[endAttr.extendCorner[0], startAttr.extendCorner[1]];
+    //   }
+    // }
   }
 }
 
