@@ -10,5 +10,5 @@ myCade.drawBlock({
 });
 myCade.drawBlock({
   x: 400,
-  y: 400
+  y: 500
 });

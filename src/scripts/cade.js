@@ -39,7 +39,6 @@ class Cade {
     const blockGroup = new Konva.Group({
       x: config.x,
       y: config.y,
-      draggable: true,
       name: 'blockGroup'
     });
     // 绘制文字
@@ -89,27 +88,27 @@ class Cade {
 
   blockEvent(currentBlock) {
     currentBlock.on('dragmove', () => {
-      if (currentBlock.hasOwnProperty('importLine') && currentBlock.importLine.length > 0) {
-        currentBlock.importLine.map(item => {
-          const _line = this.lineLayer.findOne(`#${item}`);
-          const _pointPos = this.blockLayer.findOne(`#${_line.getAttr('endPoint')}`).absolutePosition();
-          _line.setAttr(
-            'points',
-            _line
-              .getAttr('points')
-              .slice(0, 2)
-              .concat([_pointPos.x, _pointPos.y])
-          );
-        });
-      }
-      if (currentBlock.hasOwnProperty('exportLine') && currentBlock.exportLine.length > 0) {
-        currentBlock.exportLine.map(item => {
-          const _line = this.lineLayer.findOne(`#${item}`);
-          const _pointPos = this.blockLayer.findOne(`#${_line.getAttr('startPoint')}`).absolutePosition();
-          _line.setAttr('points', [_pointPos.x, _pointPos.y].concat(_line.getAttr('points').slice(2)));
-        });
-      }
-      this.lineLayer.draw();
+      // if (currentBlock.hasOwnProperty('importLine') && currentBlock.importLine.length > 0) {
+      //   currentBlock.importLine.map(item => {
+      //     const _line = this.lineLayer.findOne(`#${item}`);
+      //     const _pointPos = this.blockLayer.findOne(`#${_line.getAttr('endPoint')}`).absolutePosition();
+      //     _line.setAttr(
+      //       'points',
+      //       _line
+      //         .getAttr('points')
+      //         .slice(0, 2)
+      //         .concat([_pointPos.x, _pointPos.y])
+      //     );
+      //   });
+      // }
+      // if (currentBlock.hasOwnProperty('exportLine') && currentBlock.exportLine.length > 0) {
+      //   currentBlock.exportLine.map(item => {
+      //     const _line = this.lineLayer.findOne(`#${item}`);
+      //     const _pointPos = this.blockLayer.findOne(`#${_line.getAttr('startPoint')}`).absolutePosition();
+      //     _line.setAttr('points', [_pointPos.x, _pointPos.y].concat(_line.getAttr('points').slice(2)));
+      //   });
+      // }
+      // this.lineLayer.draw();
     });
     currentBlock.find('.blockText').on('mouseenter', () => {
       this.stage.container().style.cursor = 'move';
@@ -260,9 +259,6 @@ class Cade {
         this.lineLayer.draw();
       }
     });
-    _pointGroup.on('mouseleave', event => {
-      event.cancelBubble = true;
-    });
   }
 
   // point环的显隐
@@ -307,32 +303,12 @@ class Cade {
     }
   }
 
+  // 绘制箭头线段
   drawArrowLine() {
-    this.getExtendCornerPos('start');
-    this.getExtendCornerPos('end');
-    const startAttr = this.lineStartPoint.attrs,
-      endAttr = this.lineEndPoint.attrs;
-    const crossPointArray = [{ x: startAttr.absX, y: endAttr.absY }, { x: endAttr.absX, y: startAttr.absY }];
-
-    // const line = new Konva.Arrow({
-    //   points: [this.lineStartPoint.getAttr('absX'), this.lineStartPoint.getAttr('absY')].concat(
-    //     this.lineStartPoint.getAttr('extendCorner'),
-    //     this.gerCenterCornerPos(),
-    //     this.lineEndPoint.getAttr('extendCorner'),
-    //     [this.lineEndPoint.getAttr('absX'), this.lineEndPoint.getAttr('absY')]
-    //   ),
-    //   stroke: lineColor,
-    //   fill: lineColor,
-    //   pointerLength: 6,
-    //   pointerWidth: 5,
-    //   startPoint: this.lineStartPoint.getAttr('id'),
-    //   endPoint: this.lineEndPoint.getAttr('id'),
-    //   name: 'arrowLine',
-    //   id: this.randomID(),
-    //   lineCap: 'round',
-    //   lineJoin: 'round'
-    // });
-
+    const startPos = this.lineStartPoint.absolutePosition(),
+      endPos = this.lineEndPoint.absolutePosition(),
+      startExtendPos = this.getExtendCornerPos(this.lineStartPoint),
+      endExtendPos = this.getExtendCornerPos(this.lineEndPoint);
     const line = new Konva.Arrow({
       points: [],
       stroke: lineColor,
@@ -342,77 +318,85 @@ class Cade {
       startPoint: this.lineStartPoint.getAttr('id'),
       endPoint: this.lineEndPoint.getAttr('id'),
       name: 'arrowLine',
-      id: this.randomID(),
       lineCap: 'round',
       lineJoin: 'round'
     });
-    const firestLine = line.clone({
-      points: [startAttr.absX, startAttr.absY].concat([crossPointArray[0].x, crossPointArray[0].y], [endAttr.absX, endAttr.absY])
+    const basePoint = [startPos.x, startPos.y, startExtendPos.x, startExtendPos.y, endExtendPos.x, endExtendPos.y, endPos.x, endPos.y];
+    const centerArray = [[startExtendPos.x, endExtendPos.y], [endExtendPos.x, startExtendPos.y]];
+    if (startExtendPos.x === startPos.x) {
+      [centerArray[0], centerArray[1]] = [centerArray[1], centerArray[0]];
+    }
+    const firstLine = line.clone({
+      points: basePoint.slice(0, 4).concat(centerArray[1], basePoint.slice(4))
     });
     const secondLine = line.clone({
-      points: [startAttr.absX, startAttr.absY].concat([crossPointArray[1].x, crossPointArray[1].y], [endAttr.absX, endAttr.absY])
+      points: basePoint.slice(0, 4).concat(centerArray[0], basePoint.slice(4))
     });
-
-    this.lineLayer.add(firestLine);
+    this.lineLayer.add(firstLine);
     this.lineLayer.add(secondLine);
-    this.lineStartPoint.findAncestor('.pointContainer').children.each(item => {
-      console.log(firestLine.intersects(item.absolutePosition()));
-    });
-
+    if (this.crossCount(firstLine) > 2) {
+      firstLine.destroy();
+      if (this.crossCount(secondLine) > 2) {
+        secondLine.destroy();
+        // 简单连线都会产生相交时，需要设置第六个点来实现避让
+        // 这里尝试另外两种连接方式
+        const _x = startExtendPos.x + (endExtendPos.x - startExtendPos.x) / 2,
+          _y = startExtendPos.y + (endExtendPos.y - startExtendPos.y) / 2;
+        const pointArray = [[_x, startExtendPos.y, _x, endExtendPos.y], [startExtendPos.x, _y, endExtendPos.x, _y]];
+        if (Math.abs(startExtendPos.x - endExtendPos.x) > Math.abs(startExtendPos.y - endExtendPos.y)) {
+          [pointArray[0], pointArray[1]] = [pointArray[1], pointArray[0]];
+        }
+        const thirdLine = line.clone({
+          points: basePoint.slice(0, 4).concat(pointArray[0], basePoint.slice(4))
+        });
+        this.lineLayer.add(thirdLine);
+        if (this.crossCount(thirdLine) > 2) {
+          thirdLine.destroy();
+          this.lineLayer.add(
+            line.clone({
+              points: basePoint.slice(0, 4).concat(pointArray[1], basePoint.slice(4))
+            })
+          );
+        }
+      }
+    } else {
+      secondLine.destroy();
+    }
     this.lineLayer.draw();
-
-    // return line.getAttr('id');
   }
 
-  getExtendCornerPos(pointType) {
-    const point = pointType === 'start' ? this.lineStartPoint : this.lineEndPoint;
-    const pointPos = point.absolutePosition();
+  // 获取相交的点的个数
+  crossCount(line) {
+    const lineStartPointContainer = this.lineStartPoint.findAncestor('.pointContainer');
+    const lineEndPointContainer = this.lineEndPoint.findAncestor('.pointContainer');
+    let crosscount = 0;
+    lineStartPointContainer.children.each(item => {
+      crosscount += line.intersects(item.absolutePosition()) ? 1 : 0;
+    });
+    lineEndPointContainer.children.each(item => {
+      crosscount += line.intersects(item.absolutePosition()) ? 1 : 0;
+    });
+    return crosscount;
+  }
+
+  // 获取简单折点
+  getExtendCornerPos(currentPoint) {
+    const pointPos = currentPoint.absolutePosition();
     const extendDistance = 20;
-    let cornerPos;
-    switch (point.getAttr('direction')) {
+    switch (currentPoint.getAttr('direction')) {
       case 'top':
-        cornerPos = [pointPos.x, pointPos.y - extendDistance];
+        return { x: pointPos.x, y: pointPos.y - extendDistance };
         break;
       case 'right':
-        cornerPos = [pointPos.x + extendDistance, pointPos.y];
+        return { x: pointPos.x + extendDistance, y: pointPos.y };
         break;
       case 'bottom':
-        cornerPos = [pointPos.x, pointPos.y + extendDistance];
+        return { x: pointPos.x, y: pointPos.y + extendDistance };
         break;
       case 'left':
-        cornerPos = [pointPos.x - extendDistance, pointPos.y];
+        return { x: pointPos.x - extendDistance, y: pointPos.y };
         break;
     }
-    point.setAttrs({
-      extendCorner: cornerPos,
-      absX: pointPos.x,
-      absY: pointPos.y
-    });
-  }
-
-  gerCenterCornerPos() {
-    const startAttr = this.lineStartPoint.attrs,
-      endAttr = this.lineEndPoint.attrs;
-    const crossPointArray = [{ x: startAttr.x, y: endAttr.y }, { x: endAttr.x, y: startAttr.y }];
-    // console.log(this.lineStartPoint.findAncestor('.pointContainer'));
-
-    // // 判断结束点相对于起始点的方位
-    // if (this.lineStartPoint.getAttr('absX') - this.lineEndPoint.getAttr('absX')) {
-    //   // 结束点在起始点的右侧
-    // }
-    // const startAttr = this.lineStartPoint.attrs,
-    //   endAttr = this.lineEndPoint.attrs;
-    // if (startAttr.direction === 'top' || endAttr.direction === 'bottom') {
-    //   // return [startAttr.extendCorner[0], endAttr.extendCorner[1]];
-    // } else {
-    //   // 当起始点是左右两点时，判断结束点的位置
-    //   const absPos = startAttr.absX - endAttr.absX > 0 ? 'left' : 'right';
-    //   if (startAttr.direction === endAttr.direction && endAttr.direction === absPos) {
-    //     // 使用特殊的连接方式
-    //   } else {
-    //     return startAttr.x - endAttr.x>0?[endAttr.extendCorner[0], startAttr.extendCorner[1]];
-    //   }
-    // }
   }
 }
 
