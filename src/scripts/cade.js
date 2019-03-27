@@ -1,4 +1,4 @@
-import generateConnectionPoints from './corner-points';
+import cornerPoints from './corner-points';
 const strokeColor = '#5dafff',
   fillColor = '#e7f7ff',
   lineColor = '#abb7c5';
@@ -89,27 +89,7 @@ class Cade {
 
   blockEvent(currentBlock) {
     currentBlock.on('dragmove', () => {
-      // if (currentBlock.hasOwnProperty('importLine') && currentBlock.importLine.length > 0) {
-      //   currentBlock.importLine.map(item => {
-      //     const _line = this.lineLayer.findOne(`#${item}`);
-      //     const _pointPos = this.blockLayer.findOne(`#${_line.getAttr('endPoint')}`).absolutePosition();
-      //     _line.setAttr(
-      //       'points',
-      //       _line
-      //         .getAttr('points')
-      //         .slice(0, 2)
-      //         .concat([_pointPos.x, _pointPos.y])
-      //     );
-      //   });
-      // }
-      // if (currentBlock.hasOwnProperty('exportLine') && currentBlock.exportLine.length > 0) {
-      //   currentBlock.exportLine.map(item => {
-      //     const _line = this.lineLayer.findOne(`#${item}`);
-      //     const _pointPos = this.blockLayer.findOne(`#${_line.getAttr('startPoint')}`).absolutePosition();
-      //     _line.setAttr('points', [_pointPos.x, _pointPos.y].concat(_line.getAttr('points').slice(2)));
-      //   });
-      // }
-      // this.lineLayer.draw();
+
     });
     currentBlock.find('.blockText').on('mouseenter', () => {
       this.stage.container().style.cursor = 'move';
@@ -307,12 +287,9 @@ class Cade {
   // 绘制箭头线段
   drawArrowLine() {
     const startPos = this.lineStartPoint.absolutePosition(),
-      endPos = this.lineEndPoint.absolutePosition(),
-      startExtendPos = this.getExtendCornerPos(this.lineStartPoint),
-      endExtendPos = this.getExtendCornerPos(this.lineEndPoint);
-
+      endPos = this.lineEndPoint.absolutePosition();
     const line = new Konva.Arrow({
-      points: generateConnectionPoints({
+      points: cornerPoints({
         entryPoint: [startPos.x, startPos.y],
         entryDirection: this.lineStartPoint.attrs.direction,
         exitPoint: [endPos.x, endPos.y],
@@ -328,83 +305,8 @@ class Cade {
       lineCap: 'round',
       lineJoin: 'round'
     });
-    // const basePoint = [startPos.x, startPos.y, startExtendPos.x, startExtendPos.y, endExtendPos.x, endExtendPos.y, endPos.x, endPos.y];
-    // const centerArray = [[startExtendPos.x, endExtendPos.y], [endExtendPos.x, startExtendPos.y]];
-    // if (startExtendPos.x === startPos.x) {
-    //   [centerArray[0], centerArray[1]] = [centerArray[1], centerArray[0]];
-    // }
-    // const firstLine = line.clone({
-    //   points: basePoint.slice(0, 4).concat(centerArray[1], basePoint.slice(4))
-    // });
-    // const secondLine = line.clone({
-    //   points: basePoint.slice(0, 4).concat(centerArray[0], basePoint.slice(4))
-    // });
-    // this.lineLayer.add(firstLine);
-    // this.lineLayer.add(secondLine);
-    // if (this.crossCount(firstLine) > 2) {
-    //   firstLine.destroy();
-    //   if (this.crossCount(secondLine) > 2) {
-    //     secondLine.destroy();
-    //     // 简单连线都会产生相交时，需要设置第六个点来实现避让
-    //     // 这里尝试另外两种连接方式
-    //     const _x = startExtendPos.x + (endExtendPos.x - startExtendPos.x) / 2,
-    //       _y = startExtendPos.y + (endExtendPos.y - startExtendPos.y) / 2;
-    //     const pointArray = [[_x, startExtendPos.y, _x, endExtendPos.y], [startExtendPos.x, _y, endExtendPos.x, _y]];
-    //     if (Math.abs(startExtendPos.x - endExtendPos.x) > Math.abs(startExtendPos.y - endExtendPos.y)) {
-    //       [pointArray[0], pointArray[1]] = [pointArray[1], pointArray[0]];
-    //     }
-    //     const thirdLine = line.clone({
-    //       points: basePoint.slice(0, 4).concat(pointArray[0], basePoint.slice(4))
-    //     });
-    //     this.lineLayer.add(thirdLine);
-    //     if (this.crossCount(thirdLine) > 2) {
-    //       thirdLine.destroy();
-    //       this.lineLayer.add(
-    //         line.clone({
-    //           points: basePoint.slice(0, 4).concat(pointArray[1], basePoint.slice(4))
-    //         })
-    //       );
-    //     }
-    //   }
-    // } else {
-    //   secondLine.destroy();
-    // }
     this.lineLayer.add(line);
     this.lineLayer.draw();
-  }
-
-  // 获取相交的点的个数
-  crossCount(line) {
-    const lineStartPointContainer = this.lineStartPoint.findAncestor('.pointContainer');
-    const lineEndPointContainer = this.lineEndPoint.findAncestor('.pointContainer');
-    let crosscount = 0;
-    lineStartPointContainer.children.each(item => {
-      crosscount += line.intersects(item.absolutePosition()) ? 1 : 0;
-    });
-    lineEndPointContainer.children.each(item => {
-      crosscount += line.intersects(item.absolutePosition()) ? 1 : 0;
-    });
-    return crosscount;
-  }
-
-  // 获取简单折点
-  getExtendCornerPos(currentPoint) {
-    const pointPos = currentPoint.absolutePosition();
-    const extendDistance = 20;
-    switch (currentPoint.getAttr('direction')) {
-      case 'top':
-        return { x: pointPos.x, y: pointPos.y - extendDistance };
-        break;
-      case 'right':
-        return { x: pointPos.x + extendDistance, y: pointPos.y };
-        break;
-      case 'bottom':
-        return { x: pointPos.x, y: pointPos.y + extendDistance };
-        break;
-      case 'left':
-        return { x: pointPos.x - extendDistance, y: pointPos.y };
-        break;
-    }
   }
 }
 
