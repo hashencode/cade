@@ -1,3 +1,4 @@
+import generateConnectionPoints from './corner-points';
 const strokeColor = '#5dafff',
   fillColor = '#e7f7ff',
   lineColor = '#abb7c5';
@@ -151,10 +152,10 @@ class Cade {
     pointGroup.add(pointCircle);
     // 节点坐标
     const axisArray = [
-      { x: _attr.x + _attr.width / 2, y: 0, direction: 'top' },
-      { x: _attr.x + _attr.width, y: _attr.y + _attr.height / 2, direction: 'right' },
-      { x: _attr.x + _attr.width / 2, y: _attr.height, direction: 'bottom' },
-      { x: _attr.x, y: _attr.y + _attr.height / 2, direction: 'left' }
+      { x: _attr.x + _attr.width / 2, y: 0, direction: [0, -1] },
+      { x: _attr.x + _attr.width, y: _attr.y + _attr.height / 2, direction: [1, 0] },
+      { x: _attr.x + _attr.width / 2, y: _attr.height, direction: [0, 1] },
+      { x: _attr.x, y: _attr.y + _attr.height / 2, direction: [-1, 0] }
     ];
     // 将节点插入group
     for (let i = 0; i < 4; i++) {
@@ -309,8 +310,14 @@ class Cade {
       endPos = this.lineEndPoint.absolutePosition(),
       startExtendPos = this.getExtendCornerPos(this.lineStartPoint),
       endExtendPos = this.getExtendCornerPos(this.lineEndPoint);
+
     const line = new Konva.Arrow({
-      points: [],
+      points: generateConnectionPoints({
+        entryPoint: [startPos.x, startPos.y],
+        entryDirection: this.lineStartPoint.attrs.direction,
+        exitPoint: [endPos.x, endPos.y],
+        exitDirection: this.lineEndPoint.attrs.direction
+      }),
       stroke: lineColor,
       fill: lineColor,
       pointerLength: 6,
@@ -321,47 +328,48 @@ class Cade {
       lineCap: 'round',
       lineJoin: 'round'
     });
-    const basePoint = [startPos.x, startPos.y, startExtendPos.x, startExtendPos.y, endExtendPos.x, endExtendPos.y, endPos.x, endPos.y];
-    const centerArray = [[startExtendPos.x, endExtendPos.y], [endExtendPos.x, startExtendPos.y]];
-    if (startExtendPos.x === startPos.x) {
-      [centerArray[0], centerArray[1]] = [centerArray[1], centerArray[0]];
-    }
-    const firstLine = line.clone({
-      points: basePoint.slice(0, 4).concat(centerArray[1], basePoint.slice(4))
-    });
-    const secondLine = line.clone({
-      points: basePoint.slice(0, 4).concat(centerArray[0], basePoint.slice(4))
-    });
-    this.lineLayer.add(firstLine);
-    this.lineLayer.add(secondLine);
-    if (this.crossCount(firstLine) > 2) {
-      firstLine.destroy();
-      if (this.crossCount(secondLine) > 2) {
-        secondLine.destroy();
-        // 简单连线都会产生相交时，需要设置第六个点来实现避让
-        // 这里尝试另外两种连接方式
-        const _x = startExtendPos.x + (endExtendPos.x - startExtendPos.x) / 2,
-          _y = startExtendPos.y + (endExtendPos.y - startExtendPos.y) / 2;
-        const pointArray = [[_x, startExtendPos.y, _x, endExtendPos.y], [startExtendPos.x, _y, endExtendPos.x, _y]];
-        if (Math.abs(startExtendPos.x - endExtendPos.x) > Math.abs(startExtendPos.y - endExtendPos.y)) {
-          [pointArray[0], pointArray[1]] = [pointArray[1], pointArray[0]];
-        }
-        const thirdLine = line.clone({
-          points: basePoint.slice(0, 4).concat(pointArray[0], basePoint.slice(4))
-        });
-        this.lineLayer.add(thirdLine);
-        if (this.crossCount(thirdLine) > 2) {
-          thirdLine.destroy();
-          this.lineLayer.add(
-            line.clone({
-              points: basePoint.slice(0, 4).concat(pointArray[1], basePoint.slice(4))
-            })
-          );
-        }
-      }
-    } else {
-      secondLine.destroy();
-    }
+    // const basePoint = [startPos.x, startPos.y, startExtendPos.x, startExtendPos.y, endExtendPos.x, endExtendPos.y, endPos.x, endPos.y];
+    // const centerArray = [[startExtendPos.x, endExtendPos.y], [endExtendPos.x, startExtendPos.y]];
+    // if (startExtendPos.x === startPos.x) {
+    //   [centerArray[0], centerArray[1]] = [centerArray[1], centerArray[0]];
+    // }
+    // const firstLine = line.clone({
+    //   points: basePoint.slice(0, 4).concat(centerArray[1], basePoint.slice(4))
+    // });
+    // const secondLine = line.clone({
+    //   points: basePoint.slice(0, 4).concat(centerArray[0], basePoint.slice(4))
+    // });
+    // this.lineLayer.add(firstLine);
+    // this.lineLayer.add(secondLine);
+    // if (this.crossCount(firstLine) > 2) {
+    //   firstLine.destroy();
+    //   if (this.crossCount(secondLine) > 2) {
+    //     secondLine.destroy();
+    //     // 简单连线都会产生相交时，需要设置第六个点来实现避让
+    //     // 这里尝试另外两种连接方式
+    //     const _x = startExtendPos.x + (endExtendPos.x - startExtendPos.x) / 2,
+    //       _y = startExtendPos.y + (endExtendPos.y - startExtendPos.y) / 2;
+    //     const pointArray = [[_x, startExtendPos.y, _x, endExtendPos.y], [startExtendPos.x, _y, endExtendPos.x, _y]];
+    //     if (Math.abs(startExtendPos.x - endExtendPos.x) > Math.abs(startExtendPos.y - endExtendPos.y)) {
+    //       [pointArray[0], pointArray[1]] = [pointArray[1], pointArray[0]];
+    //     }
+    //     const thirdLine = line.clone({
+    //       points: basePoint.slice(0, 4).concat(pointArray[0], basePoint.slice(4))
+    //     });
+    //     this.lineLayer.add(thirdLine);
+    //     if (this.crossCount(thirdLine) > 2) {
+    //       thirdLine.destroy();
+    //       this.lineLayer.add(
+    //         line.clone({
+    //           points: basePoint.slice(0, 4).concat(pointArray[1], basePoint.slice(4))
+    //         })
+    //       );
+    //     }
+    //   }
+    // } else {
+    //   secondLine.destroy();
+    // }
+    this.lineLayer.add(line);
     this.lineLayer.draw();
   }
 
