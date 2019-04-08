@@ -1,4 +1,5 @@
 import cornerPoints from './corner-points';
+import ResizeObserver from 'resize-observer-polyfill';
 const strokeColor = '#5dafff',
   fillColor = '#e7f7ff',
   lineColor = '#abb7c5';
@@ -32,6 +33,14 @@ class Cade {
     this.stage.add(this.blockLayer);
     this.stage.add(this.lineLayer);
     this.stageEventBind();
+    const ro = new ResizeObserver(() => {
+      this.stage.setAttrs({
+        width: stageDom.clientWidth,
+        height: stageDom.clientHeight
+      });
+      this.stage.draw();
+    });
+    ro.observe(document.body);
   }
 
   stageEventBind() {
@@ -126,7 +135,7 @@ class Cade {
       const _lines = blockDash.findAncestor('.blockElement').getAttr('lines');
       if (_lines && _lines.length > 0) {
         _lines.map(item => {
-          this.updateArrowLine(item);
+          this.updateArrow(item);
         });
       }
     });
@@ -241,7 +250,7 @@ class Cade {
           });
           this.lineLayer.draw();
           if (this.lineEndPoint) {
-            const lineID = this.drawArrowLine();
+            const lineID = this.drawArrow();
             // 返回arrow line的id，根据矢量方向，分别设置importLine和exportLine
             const startBlock = this.lineStartPoint.findAncestor('.blockElement'),
               endBlock = this.lineEndPoint.findAncestor('.blockElement');
@@ -309,7 +318,7 @@ class Cade {
   }
 
   // 绘制箭头线段
-  drawArrowLine(_startPointID, _endPointID, _lineID) {
+  drawArrow(_startPointID, _endPointID, _lineID) {
     const _id = _lineID ? _lineID : this.randomID();
     const _lineStartPoint = _startPointID ? this.blockLayer.findOne(`#${_startPointID}`) : this.lineStartPoint;
     const _lineEndPoint = _endPointID ? this.blockLayer.findOne(`#${_endPointID}`) : this.lineEndPoint;
@@ -342,10 +351,12 @@ class Cade {
     return _id;
   }
 
-  updateArrowLine(lineID) {
+  updateArrow(lineID) {
     const _existLine = this.lineLayer.findOne(`#${lineID}`);
-    this.drawArrowLine(_existLine.getAttr('startPoint'), _existLine.getAttr('endPoint'), lineID);
+    this.drawArrow(_existLine.getAttr('startPoint'), _existLine.getAttr('endPoint'), lineID);
   }
+
+  arrowEventBind() {}
 
   // 设置激活状态
   setActiveStatus(currentID) {
