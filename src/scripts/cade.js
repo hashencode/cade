@@ -31,6 +31,16 @@ class Cade {
     this.lineLayer = new Konva.Layer();
     this.stage.add(this.blockLayer);
     this.stage.add(this.lineLayer);
+    this.stageEventBind();
+  }
+
+  stageEventBind() {
+    // 判断当前点击是否是在空白区域，如果是，则清除所有选中状态
+    this.stage.on('mousedown', e => {
+      if (e.currentTarget == e.target) {
+        this.resetActiveStatus();
+      }
+    });
   }
 
   // 创建块
@@ -39,7 +49,8 @@ class Cade {
       x: config.x,
       y: config.y,
       name: 'blockElement',
-      isActive: false
+      isActive: false,
+      id: this.randomID()
     });
     // 绘制文字
     const blockText = new Konva.Text({
@@ -99,26 +110,7 @@ class Cade {
       this.stage.container().style.cursor = 'default';
     });
     currentBlock.on('mousedown', () => {
-      const _allPointsElements = this.blockLayer.find('.pointsElement');
-      const _length = _allPointsElements.length;
-      for (let i = 0; i < _length; i++) {
-        const item = _allPointsElements[i];
-        if (item.getAttr('isActive')) {
-          item.opacity(0);
-          item.setAttr('isActive', false);
-          item.find('.pointGroup').map(item => {
-            item.off('mouseenter');
-          });
-        }
-        if (i >= _length - 1) {
-          const _pointsElement = currentBlock.findOne('.pointsElement');
-          _pointsElement.opacity(1);
-          _pointsElement.setAttr('isActive', true);
-          _pointsElement.find('.pointGroup').map(item => {
-            this.pointElementEventBind(item);
-          });
-        }
-      }
+      this.setActiveStatus(currentBlock.getAttr('id'));
     });
     const blockDash = currentBlock.findOne('.blockDash');
     // 虚线框事件监听
@@ -330,9 +322,9 @@ class Cade {
     const line = new Konva.Arrow({
       points: cornerPoints({
         entryPoint: [startPos.x, startPos.y],
-        entryDirection: _lineStartPoint.attrs.direction,
+        entryDirection: _lineStartPoint.getAttr('direction'),
         exitPoint: [endPos.x, endPos.y],
-        exitDirection: this.lineEndPoint.attrs.direction
+        exitDirection: _lineEndPoint.getAttr('direction')
       }),
       stroke: lineColor,
       fill: lineColor,
@@ -353,6 +345,40 @@ class Cade {
   updateArrowLine(lineID) {
     const _existLine = this.lineLayer.findOne(`#${lineID}`);
     this.drawArrowLine(_existLine.getAttr('startPoint'), _existLine.getAttr('endPoint'), lineID);
+  }
+
+  // 设置激活状态
+  setActiveStatus(currentID) {
+    const currentElement = this.stage.findOne(`#${currentID}`);
+    switch (currentElement.getAttr('name')) {
+      case 'blockElement':
+        // 设置block的激活状态
+        this.blockLayer.find('.blockElement').map(item => {
+          const booleanValue = item.getAttr('id') === currentID;
+          const _pElement = item.findOne('.pointsElement');
+          _pElement.opacity(booleanValue ? 1 : 0);
+          _pElement.setAttr('isActive', booleanValue);
+          _pElement.find('.pointGroup').map(pointItem => {
+            if (booleanValue) {
+              this.pointElementEventBind(pointItem);
+            } else {
+              pointItem.off('mouseenter');
+            }
+          });
+        });
+        break;
+    }
+  }
+
+  resetActiveStatus() {
+    this.blockLayer.find('.pointsElement').map(_pElement => {
+      _pElement.opacity(0);
+      _pElement.setAttr('isActive', false);
+      _pElement.find('.pointGroup').map(pointItem => {
+        pointItem.off('mouseenter');
+      });
+    });
+    this.stage.draw();
   }
 }
 
