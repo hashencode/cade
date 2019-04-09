@@ -17,7 +17,9 @@
     "url": "https://github.com/hashencode/cade/issues"
   },
   "homepage": "https://github.com/hashencode/cade#readme",
-  "dependencies": {},
+  "dependencies": {
+    "@babel/polyfill": "^7.4.3"
+  },
   "devDependencies": {
     "@babel/core": "^7.3.4",
     "babel-loader": "^8.0.5",
