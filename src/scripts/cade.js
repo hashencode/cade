@@ -29,8 +29,12 @@ class Cade {
       width: stageDom.clientWidth,
       height: stageDom.clientHeight
     });
-    this.blockLayer = new Konva.Layer();
-    this.lineLayer = new Konva.Layer();
+    this.blockLayer = new Konva.Layer({
+      name: 'blockLayer'
+    });
+    this.lineLayer = new Konva.Layer({
+      name: 'lineLayer'
+    });
     this.stage.add(this.blockLayer);
     this.stage.add(this.lineLayer);
     this.stageEventBind();
@@ -55,12 +59,13 @@ class Cade {
 
   // 创建 block
   createBlock(config) {
+    const blockID = this.randomID();
     const blockElement = new Konva.Group({
-      x: config.x,
-      y: config.y,
+      x: config ? config.x : 0,
+      y: config ? config.y : 0,
       name: 'blockElement',
       isActive: false,
-      id: this.randomID()
+      id: blockID
     });
     // 绘制文字
     const blockText = new Konva.Text({
@@ -108,39 +113,42 @@ class Cade {
     blockElement.add(this.createBlockPoint(rect));
     this.blockLayer.add(blockElement);
     this.blockLayer.draw();
-    this.blockEventBind(blockElement);
+    this.blockEventBind(blockID);
   }
 
   // 为 block 绑定事件
-  blockEventBind(currentBlock) {
-    currentBlock.on('mouseenter', () => {
-      this.stage.container().style.cursor = 'move';
-    });
-    currentBlock.on('mouseleave', () => {
-      this.stage.container().style.cursor = 'default';
-    });
-    currentBlock.on('click', () => {
-      this.resetActiveStatus(currentBlock.getAttr('id'));
-    });
-    const blockDash = currentBlock.findOne('.blockDash');
-    // 虚线框事件监听
-    blockDash.on('dragmove', () => {
-      blockDash.opacity(1);
-    });
-    blockDash.on('mouseup', () => {
-      currentBlock.setPosition(blockDash.getAbsolutePosition());
-      blockDash.opacity(0);
-      blockDash.x(0);
-      blockDash.y(0);
+  blockEventBind(blockID = 0) {
+    const currentBlocks = blockID ? this.blockLayer.find(`#${blockID}`) : this.blockLayer.find('.blockElement');
+    currentBlocks.map(currentBlockItem => {
+      currentBlockItem.on('mouseenter', () => {
+        this.stage.container().style.cursor = 'move';
+      });
+      currentBlockItem.on('mouseleave', () => {
+        this.stage.container().style.cursor = 'default';
+      });
+      currentBlockItem.on('click', () => {
+        this.resetActiveStatus(currentBlockItem.getAttr('id'));
+      });
+      const blockDash = currentBlockItem.findOne('.blockDash');
+      // 虚线框事件监听
+      blockDash.on('dragmove', () => {
+        blockDash.opacity(1);
+      });
+      blockDash.on('mouseup', () => {
+        currentBlockItem.setPosition(blockDash.getAbsolutePosition());
+        blockDash.opacity(0);
+        blockDash.x(0);
+        blockDash.y(0);
+        this.blockLayer.draw();
+        const _lines = blockDash.findAncestor('.blockElement').getAttr('lines');
+        if (_lines && _lines.length > 0) {
+          _lines.map(item => {
+            this.updateArrow(item);
+          });
+        }
+      });
       this.blockLayer.draw();
-      const _lines = blockDash.findAncestor('.blockElement').getAttr('lines');
-      if (_lines && _lines.length > 0) {
-        _lines.map(item => {
-          this.updateArrow(item);
-        });
-      }
     });
-    this.blockLayer.draw();
   }
 
   // 绘制 blockPoint
@@ -260,12 +268,12 @@ class Cade {
   }
 
   dragPointEnd() {
-    return new Promise((resolve, reject) => {
+    return new Promise(resolve => {
       this.stage.container().style.cursor = 'default';
       this.blockPointBorderVisiableSwitch(false);
       this.lineDrawing = false;
       // 清除虚线
-      this.destoryDashLine();
+      this.destroyDashLine();
       if (this.lineEndPoint) {
         const lineID = this.createArrow();
         // 将 arrow 的 id 分别添加入起始 block 和结束 block 的 lines 属性中
@@ -332,7 +340,7 @@ class Cade {
   }
 
   // 销毁 dashline
-  destoryDashLine() {
+  destroyDashLine() {
     const lineByName = this.lineLayer.find(`.dashLine`);
     lineByName.each(item => {
       item.destroy();
@@ -342,7 +350,7 @@ class Cade {
 
   // 绘制 arrowLine
   createArrow(_startPointID, _endPointID, _lineID) {
-    const _arrowID = _lineID ? _lineID : this.randomID();
+    const _arrowElementID = _lineID ? _lineID : this.randomID();
     const _arrowStartPoint = _startPointID ? this.blockLayer.findOne(`#${_startPointID}`) : this.lineStartPoint;
     const _arrowEndPoint = _endPointID ? this.blockLayer.findOne(`#${_endPointID}`) : this.lineEndPoint;
     if (_arrowStartPoint && _arrowEndPoint) {
@@ -352,9 +360,9 @@ class Cade {
       if (_lineID) {
         this.lineLayer.findOne(`#${_lineID}`).destroy();
       }
-      const arrowLineElement = new Konva.Group({
-        name: 'arrowLineElement',
-        id: _arrowID
+      const arrowElement = new Konva.Group({
+        name: 'arrowElement',
+        id: _arrowElementID
       });
       const arrow = new Konva.Arrow({
         points: cornerPoints({
@@ -364,7 +372,6 @@ class Cade {
           exitDirection: _arrowEndPoint.getAttr('direction')
         }),
         stroke: lineColor,
-        fill: lineColor,
         pointerLength: 6,
         pointerWidth: 5,
         startPoint: _arrowStartPoint.getAttr('id'),
@@ -377,15 +384,15 @@ class Cade {
         x: endPos.x,
         y: endPos.y,
         radius: 10,
-        name: 'arrowLineDragePoint',
+        name: 'arrowDragPoint',
         draggable: true
       });
-      arrowLineElement.add(arrow);
-      arrowLineElement.add(arrowDragPoint);
-      this.lineLayer.add(arrowLineElement);
+      arrowElement.add(arrow);
+      arrowElement.add(arrowDragPoint);
+      this.lineLayer.add(arrowElement);
       this.lineLayer.draw();
-      this.arrowEventBind(arrowDragPoint, _arrowID, endPos);
-      return _arrowID;
+      this.arrowEventBind(_arrowElementID);
+      return _arrowElementID;
     }
   }
 
@@ -396,80 +403,98 @@ class Cade {
   }
 
   // arrow 事件绑定
-  arrowEventBind(arrowDragPoint, arrowID, endPos) {
-    arrowDragPoint.on('mouseenter', () => {
-      this.stage.container().style.cursor = 'crosshair';
-    });
-    arrowDragPoint.on('click', () => {
-      this.resetActiveStatus();
-    });
-    arrowDragPoint.on('dragmove', event => {
-      this.dragPointTouch(event);
-    });
-    arrowDragPoint.on('dragend', async () => {
-      const isCreateNewArrow = await this.dragPointEnd();
-      if (isCreateNewArrow) {
-        this.destoryArrow(arrowID);
-      } else {
-        arrowDragPoint.x(endPos.x);
-        arrowDragPoint.y(endPos.y);
+  arrowEventBind(arrowID = 0) {
+    const arrowElement = arrowID ? this.lineLayer.find(`#${arrowID}`) : this.lineLayer.find('.arrowElement');
+    arrowElement.map(arrowElementItem => {
+      const arrowDragPoint = arrowElementItem.findOne('.arrowDragPoint');
+      const arrowLine = arrowElementItem.findOne('.arrowLine');
+      const endPos = arrowLine.getAttr('points').slice(-2);
+      arrowLine.on('mouseenter', () => {
+        arrowLine.stroke(strokeColor);
         this.lineLayer.draw();
-      }
+      });
+      arrowLine.on('mouseleave', event => {
+        const _arrowID = arrowID ? arrowID : event.currentTarget.findAncestor('.arrowElement').id();
+        if (this.focusElementID !== _arrowID) {
+          arrowLine.stroke(lineColor);
+          this.lineLayer.draw();
+        }
+      });
+      arrowLine.on('click', event => {
+        this.resetActiveStatus(arrowID ? arrowID : event.currentTarget.findAncestor('.arrowElement').id());
+      });
+      arrowDragPoint.on('mouseenter', () => {
+        this.stage.container().style.cursor = 'crosshair';
+      });
+      arrowDragPoint.on('dragmove', event => {
+        this.dragPointTouch(event);
+      });
+      arrowDragPoint.on('dragend', async event => {
+        const isCreateNewArrow = await this.dragPointEnd();
+        if (isCreateNewArrow) {
+          this.destroyArrow(arrowID ? arrowID : event.currentTarget.findAncestor('.arrowElement').id());
+        } else {
+          arrowDragPoint.x(endPos[0]);
+          arrowDragPoint.y(endPos[1]);
+          this.lineLayer.draw();
+        }
+      });
     });
   }
 
   // 销毁 arrow
-  destoryArrow(arrowID) {
-    const _arrowLineElement = this.lineLayer.findOne(`#${arrowID}`);
-    const _arrowLine = _arrowLineElement.findOne('.arrowLine');
+  destroyArrow(arrowID) {
+    const _arrowElement = this.lineLayer.findOne(`#${arrowID}`);
+    const _arrowLine = _arrowElement.findOne('.arrowLine');
     ['startPoint', 'endPoint'].map(item => {
       const _ancestor = this.blockLayer.findOne(`#${_arrowLine.getAttr(item)}`).findAncestor('.blockElement');
       const _lines = _ancestor.getAttr('lines');
       _lines.splice(_lines.indexOf(arrowID), 1);
       _ancestor.setAttr('lines', _lines);
     });
-    _arrowLineElement.destroy();
+    _arrowElement.destroy();
     this.lineLayer.draw();
   }
 
   // 设置激活状态
   resetActiveStatus(arrowID = undefined) {
     this.focusElementID = arrowID;
-    this.ActiveStatusFunc(this.stage.findOne(`#${arrowID}`));
+    const _currentElement = this.stage.findOne(`#${arrowID}`);
+    if (_currentElement) {
+      switch (_currentElement.getAttr('name')) {
+        case 'blockElement':
+          this.resetActiveStatusOfBlock();
+          break;
+        case 'arrowElement':
+          this.resetActiveStatusOfArrow();
+          break;
+      }
+    } else {
+      this.resetActiveStatusOfBlock();
+      this.resetActiveStatusOfArrow();
+    }
     this.stage.draw();
   }
 
-  ActiveStatusFunc(_currentElement) {
-    return new Promise(resolve => {
-      console.log(_currentElement);
-      if (_currentElement) {
-        switch (_currentElement.getAttr('name')) {
-          case 'blockElement':
-            const blockElements = this.blockLayer.find('.blockElement');
-            for (let i = 0; i < blockElements.length; i++) {
-              const booleanValue = blockElements[i].getAttr('id') === this.focusElementID;
-              const _pElement = blockElements[i].findOne('.blockPointElement');
-              _pElement.opacity(booleanValue ? 1 : 0);
-              _pElement.setAttr('isActive', booleanValue);
-              _pElement.find('.blockPointGroup').map(pointItem => {
-                if (booleanValue) {
-                  this.blockPointEventBind(pointItem);
-                } else {
-                  pointItem.off('mouseenter');
-                }
-              });
-              if (i >= blockElements.length - 1) {
-                resolve();
-              }
-            }
-            break;
-          case 'arrowLineElement':
-            break;
-        }
-      } else {
-        resolve();
-      }
+  resetActiveStatusOfBlock() {
+    this.blockLayer.find('.blockElement').map(item => {
+      const booleanValue = item.getAttr('id') === this.focusElementID;
+      const _pElement = item.findOne('.blockPointElement');
+      _pElement.opacity(booleanValue ? 1 : 0);
+      _pElement.setAttr('isActive', booleanValue);
+      _pElement.find('.blockPointGroup').map(pointItem => {
+        booleanValue ? this.blockPointEventBind(pointItem) : pointItem.off('mouseenter');
+      });
     });
+  }
+
+  resetActiveStatusOfArrow() {
+    this.lineLayer.find('.arrowElement').map(item => {
+      const booleanValue = item.getAttr('id') === this.focusElementID;
+      const _arrowLine = item.find('.arrowLine');
+      _arrowLine.stroke(booleanValue ? strokeColor : lineColor);
+    });
+    this.lineLayer.draw();
   }
 }
 

@@ -1,19 +1,79 @@
+// colors
+$info: #909399;
+$info-hover: #a6a9ad;
+$info-active: #82848a;
+.info-text {
+  color: #909399;
+}
+$danger: #f56c6c;
+$danger-hover: #f78989;
+$danger-active: #dd6161;
+.danger-text {
+  color: #f56c6c;
+}
+$primary: #409eff;
+$primary-hover: #66b1ff;
+$primary-active: #3a8ee6;
+.primary-text {
+  color: #409eff;
+}
+$warning: #e6a23c;
+$warning-hover: #ebb563;
+$warning-active: #cf9236;
+.warning-text {
+  color: #e6a23c;
+}
+$success: #67c23a;
+$success-hover: #85ce61;
+$success-active: #5daf34;
+.success-text {
+  color: $success;
+}
+$hover: #f5f7fa;
+
+// text colors
+$text-primary: #303133;
+$text-regular: #606266;
+$text-secondary: #909399;
+$text-placeholder: #c0c4cc;
+
+// border colors
+$border-base: #dcdfe6;
+$border-base-light: #e4e7ed;
+$border-base-lighter: #ebeef5;
+$border-base-extra-light: #f2f6fc;
+
 .cade {
   height: 100%;
   width: 100%;
   position: relative;
+  overflow: hidden;
 }
 .cade-header {
-  height: 50px;
-  box-shadow: 0 2px 10px -3px rgba(0, 0, 0, 0.1);
+  height: 45px;
+  box-shadow: 0 2px 15px -3px rgba(0, 0, 0, 0.05);
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   z-index: 99;
+  padding-left: 12px;
+}
+.cade-header-btn {
+  float: left;
+  margin: 4px 15px 0 0;
+  padding: 5px 7px;
+  font-size: 20px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+  &:hover {
+    border: 1px solid $border-base-light;
+  }
 }
 .cade-body {
+  position: relative;
   height: 100%;
   z-index: 50;
 }
-.cade-side {
+.cade-element-list {
   width: 200px;
   height: 100%;
   float: left;
@@ -21,7 +81,7 @@
   background-color: #f5f5f5;
   padding: 15px;
 }
-.cade-side-item {
+.cade-element-item {
   margin-bottom: 10px;
   cursor: move;
   user-select: none;
@@ -30,7 +90,7 @@
   width: 100%;
   padding: 10px;
   border-radius: 4px;
-  border: 1px solid #5dafff;
+  border: 1px solid $primary;
   background-color: #e7f7ff;
   font-size: 14px;
   text-align: center;
@@ -42,4 +102,12 @@
   width: calc(100% - 200px);
 }
 #cade-canvas {
+}
+.cade-panel {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 350px;
+  height: 100%;
+  background-color: red;
 }
