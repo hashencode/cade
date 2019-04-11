@@ -1,6 +1,6 @@
 import cornerPoints from './corner-points';
 import ResizeObserver from 'resize-observer-polyfill';
-import { cadeFrame } from './cade-frame';
+import { Observable } from 'rxjs';
 
 const strokeColor = '#5dafff',
   fillColor = '#e7f7ff',
@@ -12,7 +12,10 @@ class Cade {
     this.lineStartPoint = null;
     this.lineEndPoint = null;
     this.focusElementID = null;
-    this.cadeFrame = null;
+    this.createBlockObserve = null;
+    this.updateBlockObserve = null;
+    this.createArrowObserve = null;
+    this.updateArrowObserve = null;
   }
 
   // 生成唯一ID
@@ -49,8 +52,7 @@ class Cade {
       this.stage.draw();
     });
     ro.observe(document.body);
-    this.cadeFrame = new cadeFrame(this);
-    this.cadeFrame.frameInit();
+    this.frameInit();
   }
 
   stageEventBind() {
@@ -59,6 +61,20 @@ class Cade {
       if (e.currentTarget == e.target) {
         this.resetActiveStatus();
       }
+    });
+  }
+
+  // block 创建观察
+  onCreateBlock() {
+    return Observable.create(observer => {
+      this.createBlockObserve = observer;
+    });
+  }
+
+  // block 更新观察
+  onUpdateBlock() {
+    return Observable.create(observer => {
+      this.updateBlockObserve = observer;
     });
   }
 
@@ -122,7 +138,11 @@ class Cade {
     this.blockLayer.add(blockElement);
     this.blockLayer.draw();
     this.blockEventBind(blockID);
+    // blockElement 创建反馈
+    this.createBlockObserve.next();
   }
+
+  destroyBlock() {}
 
   // 为 block 绑定事件
   blockEventBind(blockID = 0) {
@@ -142,8 +162,11 @@ class Cade {
       blockDash.on('dragmove', () => {
         blockDash.opacity(1);
       });
-      blockDash.on('mouseup', () => {
+      blockDash.on('dragend', () => {
         currentBlockItem.setPosition(blockDash.getAbsolutePosition());
+        // blockElement 更新反馈
+        this.updateBlockObserve.next();
+        // 隐藏 blockDash
         blockDash.opacity(0);
         blockDash.x(0);
         blockDash.y(0);
@@ -356,17 +379,31 @@ class Cade {
     this.lineLayer.draw();
   }
 
+  // arrow 创建观察
+  onCreateArrow() {
+    return Observable.create(observer => {
+      this.createArrowObserve = observer;
+    });
+  }
+
+  // arrow 更新观察
+  onUpdateArrow() {
+    return Observable.create(observer => {
+      this.updateArrowObserve = observer;
+    });
+  }
+
   // 绘制 arrowLine
-  createArrow(_startPointID, _endPointID, _lineID) {
-    const _arrowElementID = _lineID ? _lineID : this.randomID();
+  createArrow(_startPointID, _endPointID, _arrowID) {
+    const _arrowElementID = _arrowID ? _arrowID : this.randomID();
     const _arrowStartPoint = _startPointID ? this.blockLayer.findOne(`#${_startPointID}`) : this.lineStartPoint;
     const _arrowEndPoint = _endPointID ? this.blockLayer.findOne(`#${_endPointID}`) : this.lineEndPoint;
     if (_arrowStartPoint && _arrowEndPoint) {
       const startPos = _arrowStartPoint.absolutePosition(),
         endPos = _arrowEndPoint.absolutePosition();
       // 销毁原有的箭头线段
-      if (_lineID) {
-        this.lineLayer.findOne(`#${_lineID}`).destroy();
+      if (_arrowID) {
+        this.lineLayer.findOne(`#${_arrowID}`).destroy();
       }
       const arrowElement = new Konva.Group({
         name: 'arrowElement',
@@ -400,6 +437,7 @@ class Cade {
       this.lineLayer.add(arrowElement);
       this.lineLayer.draw();
       this.arrowEventBind(_arrowElementID);
+      _arrowID ? this.updateArrowObserve.next() : this.createArrowObserve.next();
       return _arrowElementID;
     }
   }
@@ -440,7 +478,7 @@ class Cade {
       arrowDragPoint.on('dragend', async event => {
         const isCreateNewArrow = await this.dragPointEnd();
         if (isCreateNewArrow) {
-          this.destroyArrow(arrowID ? arrowID : event.currentTarget.findAncestor('.arrowElement').id());
+          this.updateArrow(arrowID ? arrowID : event.currentTarget.findAncestor('.arrowElement').id());
         } else {
           arrowDragPoint.x(endPos[0]);
           arrowDragPoint.y(endPos[1]);
@@ -487,7 +525,7 @@ class Cade {
   resetActiveStatusOfBlock() {
     this.blockLayer.find('.blockElement').map(item => {
       const booleanValue = item.getAttr('id') === this.focusElementID;
-      this.cadeFrame.switchPanel(Boolean(this.focusElementID), item.getAttr('id'));
+      this.switchPanel(Boolean(this.focusElementID), item.getAttr('id'));
       const _pElement = item.findOne('.blockPointElement');
       _pElement.opacity(booleanValue ? 1 : 0);
       _pElement.setAttr('isActive', booleanValue);
@@ -504,6 +542,58 @@ class Cade {
       _arrowLine.stroke(booleanValue ? strokeColor : lineColor);
     });
     this.lineLayer.draw();
+  }
+
+  // frame
+  frameInit() {
+    // 监听顶部按钮
+    document.querySelector('.export-btn').addEventListener('click', () => {
+      localStorage.jsonData = this.stage.toJSON();
+    });
+    document.querySelector('.import-btn').addEventListener('click', () => {
+      this.stage.clear();
+      const jsonData = localStorage.jsonData;
+      this.stage = Konva.Node.create(jsonData, 'cade-content');
+      this.stage.children.map(layerItem => {
+        this[layerItem.attrs.name] = layerItem;
+      });
+      this.stage.draw();
+      this.stageEventBind();
+      this.blockEventBind();
+      this.arrowEventBind();
+      this.resetActiveStatus();
+    });
+    const cadeBlockElement = document.querySelectorAll('.cade-blockElement');
+    for (let index = 0; index < cadeBlockElement.length; index++) {
+      cadeBlockElement[index].addEventListener('dragstart', event => {
+        this.elementType = event.target.attributes.elementtype.value;
+      });
+    }
+    // chrome 下需要阻止dragenter和dragover的默认行为才可以触发drop
+    document.querySelector('#cade-content').addEventListener('dragenter', event => {
+      event.preventDefault();
+    });
+    document.querySelector('#cade-content').addEventListener('dragover', event => {
+      event.preventDefault();
+    });
+    document.querySelector('#cade-content').addEventListener('drop', event => {
+      if (event.target.tagName === 'CANVAS') {
+        switch (this.elementType) {
+          case 'rect':
+            this.createBlock({
+              x: event.offsetX,
+              y: event.offsetY
+            });
+            break;
+        }
+        this.stage.draw();
+      }
+    });
+  }
+
+  // 右侧编辑框的开合
+  switchPanel(isOpen) {
+    document.querySelector('#cade-panel').setAttribute('class', isOpen ? 'active' : '');
   }
 }
 

@@ -18,7 +18,8 @@
   },
   "homepage": "https://github.com/hashencode/cade#readme",
   "dependencies": {
-    "@babel/polyfill": "^7.4.3"
+    "@babel/polyfill": "^7.4.3",
+    "rxjs": "^6.4.0"
   },
   "devDependencies": {
     "@babel/core": "^7.3.4",
