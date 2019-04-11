@@ -1,5 +1,7 @@
 import cornerPoints from './corner-points';
 import ResizeObserver from 'resize-observer-polyfill';
+import { cadeFrame } from './cade-frame';
+
 const strokeColor = '#5dafff',
   fillColor = '#e7f7ff',
   lineColor = '#abb7c5';
@@ -10,6 +12,7 @@ class Cade {
     this.lineStartPoint = null;
     this.lineEndPoint = null;
     this.focusElementID = null;
+    this.cadeFrame = null;
   }
 
   // 生成唯一ID
@@ -46,6 +49,8 @@ class Cade {
       this.stage.draw();
     });
     ro.observe(document.body);
+    this.cadeFrame = new cadeFrame(this);
+    this.cadeFrame.frameInit();
   }
 
   stageEventBind() {
@@ -60,9 +65,11 @@ class Cade {
   // 创建 block
   createBlock(config) {
     const blockID = this.randomID();
+    const blockWidth = 170,
+      blockHeight = 40;
     const blockElement = new Konva.Group({
-      x: config ? config.x : 0,
-      y: config ? config.y : 0,
+      x: config ? config.x - blockWidth / 2 : 0,
+      y: config ? config.y - blockHeight / 2 : 0,
       name: 'blockElement',
       isActive: false,
       id: blockID
@@ -72,7 +79,8 @@ class Cade {
       x: 0,
       y: 0,
       text: '方形节点',
-      width: 170,
+      width: blockWidth,
+      height: blockHeight,
       fontSize: 14,
       padding: 15,
       align: 'center',
@@ -82,8 +90,8 @@ class Cade {
     const rect = new Konva.Rect({
       x: 0,
       y: 0,
-      width: 170,
-      height: blockText.height(),
+      width: blockWidth,
+      height: blockHeight,
       fill: fillColor,
       stroke: strokeColor,
       strokeWidth: 1,
@@ -479,6 +487,7 @@ class Cade {
   resetActiveStatusOfBlock() {
     this.blockLayer.find('.blockElement').map(item => {
       const booleanValue = item.getAttr('id') === this.focusElementID;
+      this.cadeFrame.switchPanel(Boolean(this.focusElementID), item.getAttr('id'));
       const _pElement = item.findOne('.blockPointElement');
       _pElement.opacity(booleanValue ? 1 : 0);
       _pElement.setAttr('isActive', booleanValue);

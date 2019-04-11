@@ -94,7 +94,7 @@ $border-base-extra-light: #f2f6fc;
   background-color: #e7f7ff;
   font-size: 14px;
   text-align: center;
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.05);
 }
 #cade-content {
   float: left;
@@ -103,11 +103,16 @@ $border-base-extra-light: #f2f6fc;
 }
 #cade-canvas {
 }
-.cade-panel {
+#cade-panel {
   position: absolute;
   right: 0;
   top: 0;
-  width: 350px;
+  width: 0;
   height: 100%;
-  background-color: red;
+  background-color: white;
+  transition: width 0.3s;
+  box-shadow: -5px 0 15px -3px rgba(0, 0, 0, 0.15);
+  &.active {
+    width: 350px;
+  }
 }
