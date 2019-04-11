@@ -1,6 +1,7 @@
 import cornerPoints from './corner-points';
 import ResizeObserver from 'resize-observer-polyfill';
 import { Observable } from 'rxjs';
+import { cloneDeep } from 'lodash';
 
 const strokeColor = '#5dafff',
   fillColor = '#e7f7ff',
@@ -142,7 +143,17 @@ class Cade {
     this.createBlockObserve.next();
   }
 
-  destroyBlock() {}
+  destroyBlock(blockID) {
+    const blockElement = this.blockLayer.findOne(`#${blockID}`);
+    const lines = cloneDeep(blockElement.getAttr('lines'));
+    if( lines && lines.length>0 ){
+      lines.map((item)=>{
+        this.destroyArrow(item)
+      })
+    }
+    blockElement.destroy();
+    this.blockLayer.draw();
+  }
 
   // 为 block 绑定事件
   blockEventBind(blockID = 0) {
@@ -546,11 +557,20 @@ class Cade {
 
   // frame
   frameInit() {
+    // 监听键盘事件
+    document.querySelector('body').addEventListener('keyup',(event)=>{
+      if(event.keyCode === 8){
+        this.elementDelet();
+      }
+    });
+    document.querySelector('.cade-delete-btn').addEventListener('click',(event)=>{
+      this.elementDelet();
+    })
     // 监听顶部按钮
-    document.querySelector('.export-btn').addEventListener('click', () => {
+    document.querySelector('.cade-export-btn').addEventListener('click', () => {
       localStorage.jsonData = this.stage.toJSON();
     });
-    document.querySelector('.import-btn').addEventListener('click', () => {
+    document.querySelector('.cade-import-btn').addEventListener('click', () => {
       this.stage.clear();
       const jsonData = localStorage.jsonData;
       this.stage = Konva.Node.create(jsonData, 'cade-content');
@@ -594,6 +614,18 @@ class Cade {
   // 右侧编辑框的开合
   switchPanel(isOpen) {
     document.querySelector('#cade-panel').setAttribute('class', isOpen ? 'active' : '');
+  }
+
+  elementDelet(){
+    const focusElement = this.stage.findOne(`#${this.focusElementID}`);
+    switch (focusElement.getAttr('name')) {
+      case 'blockElement':
+        this.destroyBlock(this.focusElementID)
+        break;
+      case 'arrowElement':
+        this.destroyArrow(this.focusElementID)
+        break;
+    }
   }
 }
 
