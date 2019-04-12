@@ -70,6 +70,27 @@ class Cade {
     });
   }
 
+  stageClear() {
+    this.stage.children.map(layerItem => {
+      this[layerItem.attrs.name].destroyChildren();
+    });
+    this.stage.draw();
+  }
+
+  stageImport() {
+    this.stageClear();
+    const jsonData = localStorage.jsonData;
+    this.stage = Konva.Node.create(jsonData, 'cade-content');
+    this.stage.children.map(layerItem => {
+      this[layerItem.attrs.name] = layerItem;
+    });
+    this.stage.draw();
+    this.stageEventBind();
+    this.blockEventBind();
+    this.arrowEventBind();
+    this.resetActiveStatus();
+  }
+
   // block 创建观察
   onCreateBlock() {
     return Observable.create(observer => {
@@ -628,22 +649,16 @@ class Cade {
     document.querySelector('.cade-delete-btn').addEventListener('click', () => {
       this.elementDelet();
     });
+    document.querySelector('.cade-empty-btn').addEventListener('click', () => {
+      this.stageClear();
+      console.log(this.stage.toJSON());
+    });
     // 监听顶部按钮
     document.querySelector('.cade-export-btn').addEventListener('click', () => {
       localStorage.jsonData = this.stage.toJSON();
     });
     document.querySelector('.cade-import-btn').addEventListener('click', () => {
-      this.stage.clear();
-      const jsonData = localStorage.jsonData;
-      this.stage = Konva.Node.create(jsonData, 'cade-content');
-      this.stage.children.map(layerItem => {
-        this[layerItem.attrs.name] = layerItem;
-      });
-      this.stage.draw();
-      this.stageEventBind();
-      this.blockEventBind();
-      this.arrowEventBind();
-      this.resetActiveStatus();
+      this.stageImport();
     });
     const cadeBlockElement = document.querySelectorAll('.cade-blockElement');
     for (let index = 0; index < cadeBlockElement.length; index++) {
@@ -665,7 +680,6 @@ class Cade {
           y: event.offsetY,
           type: this.elementType
         });
-
         this.stage.draw();
       }
     });
