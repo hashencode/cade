@@ -56,9 +56,33 @@ $border-base-extra-light: #f2f6fc;
   z-index: 99;
   padding-left: 12px;
 }
+.cade-header-btn-group {
+  position: relative;
+  float: left;
+  margin-top: 4px;
+  padding: 0 10px;
+  &:after {
+    content: '';
+    position: absolute;
+    top: 25%;
+    right: 0;
+    width: 1px;
+    height: 50%;
+    background-color: $border-base-light;
+  }
+  &:nth-last-of-type(1) {
+    &:after {
+      content: '';
+      display: none;
+    }
+  }
+  .cade-header-btn:nth-last-of-type(1) {
+    margin-right: 0;
+  }
+}
 .cade-header-btn {
   float: left;
-  margin: 4px 15px 0 0;
+  margin-right: 15px;
   padding: 5px 7px;
   font-size: 20px;
   border: 1px solid transparent;
@@ -85,21 +109,37 @@ $border-base-extra-light: #f2f6fc;
   margin-bottom: 10px;
   cursor: move;
   user-select: none;
+  background: transparent;
+  text-align: center;
+}
+.cade-blockElement {
+  //display: inline-block;
+  //font-size: 14px;
+  //text-align: center;
+  //box-shadow: 0 0 5px rgba(0, 0, 0, 0.05);
+  //overflow: hidden;
 }
 .cade-rect {
-  width: 100%;
-  padding: 10px;
-  border-radius: 4px;
-  border: 1px solid $primary;
-  background-color: #e7f7ff;
-  font-size: 14px;
-  text-align: center;
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.05);
+  //width: 100%;
+  //height: 40px;
+  //line-height: 40px;
+  //border-radius: 4px;
+  //border: 1px solid $primary;
+  //background-color: #e7f7ff;
 }
+.cade-circle {
+  //width: 60px;
+  //height: 60px;
+  //line-height: 60px;
+  //border-radius: 50%;
+  //border: 1px solid $danger;
+  //background-color: #f5dcdd;
+}
+
 #cade-content {
   float: left;
   height: 100%;
-  width: calc(100% - 200px);
+  width: 100%;
 }
 #cade-canvas {
 }
@@ -113,6 +153,6 @@ $border-base-extra-light: #f2f6fc;
   transition: width 0.3s;
   box-shadow: -5px 0 15px -3px rgba(0, 0, 0, 0.15);
   &.active {
-    width: 350px;
+    width: 300px;
   }
 }

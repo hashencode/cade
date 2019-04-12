@@ -19,6 +19,7 @@
   "homepage": "https://github.com/hashencode/cade#readme",
   "dependencies": {
     "@babel/polyfill": "^7.4.3",
+    "localforage": "^1.7.3",
     "lodash": "^4.17.11",
     "rxjs": "^6.4.0"
   },
