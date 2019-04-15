@@ -21,7 +21,9 @@ class Cade {
     this.createArrowObserve = null; // arrow 创建监听
     this.updateArrowObserve = null; // arrow 更新监听
     this.elementFocusObserve = null; // element激活监听
-    this.elementActiveObserve = null; // element释放监听
+    this.elementBlurObserve = null; // element释放监听
+    this.historyArray = [];
+    this.historyIndex = -1;
   }
 
   // 生成唯一ID
@@ -157,8 +159,8 @@ class Cade {
       case 'circle':
         elementConfig = Object.assign(
           {
-            width: 40,
-            height: 40,
+            width: 80,
+            height: 80,
             fill: warningFill,
             stroke: warningStroke,
             strokeWidth: 1
@@ -193,7 +195,7 @@ class Cade {
           width: elementConfig.width,
           height: elementConfig.height,
           fontSize: 14,
-          padding: 15,
+          verticalAlign: 'middle',
           align: 'center',
           name: 'blockText'
         },
@@ -208,7 +210,8 @@ class Cade {
     this.blockLayer.draw();
     this.blockEventBind(blockID);
     // blockElement 创建反馈
-    this.createBlockObserve.next();
+    this.dbCreate();
+    this.createBlockObserve.next(blockElement);
   }
 
   destroyBlock(blockID) {
@@ -221,12 +224,19 @@ class Cade {
     }
     blockElement.destroy();
     this.blockLayer.draw();
+    this.dbCreate();
   }
 
   // 为 block 绑定事件
   blockEventBind(blockID = 0) {
     const currentBlocks = blockID ? this.blockLayer.find(`#${blockID}`) : this.blockLayer.find('.blockElement');
     currentBlocks.map(currentBlockItem => {
+      // 改变文字内容
+      const _this = this;
+      currentBlockItem['changeText'] = function(_text) {
+        currentBlockItem.findOne('.blockText').text(_text);
+        _this.blockLayer.draw();
+      };
       currentBlockItem.on('click', () => {
         this.resetActiveStatus(currentBlockItem.getAttr('id'));
       });
@@ -244,7 +254,7 @@ class Cade {
       blockDash.on('dragend', () => {
         currentBlockItem.setPosition(blockDash.getAbsolutePosition());
         // blockElement 更新反馈
-        this.updateBlockObserve.next();
+        this.updateBlockObserve.next(currentBlockItem);
         // 隐藏 blockDash
         blockDash.opacity(0);
         blockDash.x(0);
@@ -367,6 +377,7 @@ class Cade {
     });
   }
 
+  // 拖拽点处理函数
   dragPointTouch(event) {
     this.blockPointBorderVisiableSwitch(true);
     // 找到与鼠标当前位置相交的 blockPointGroup，如果相交则设置为 lineEndPoint
@@ -380,7 +391,7 @@ class Cade {
     this.createDashLine(gropPosition);
   }
 
-  dragPointEnd() {
+  dragPointEnd(inheritID = undefined) {
     return new Promise(resolve => {
       this.stage.container().style.cursor = 'default';
       this.blockPointBorderVisiableSwitch(false);
@@ -388,21 +399,27 @@ class Cade {
       // 清除虚线
       this.destroyDashLine();
       if (this.lineEndPoint) {
-        const lineID = this.createArrow();
-        // 将 arrow 的 id 分别添加入起始 block 和结束 block 的 lines 属性中
-        const startBlock = this.lineStartPoint.findAncestor('.blockElement'),
-          endBlock = this.lineEndPoint.findAncestor('.blockElement');
-        [startBlock, endBlock].map(item => {
-          if (!item.attrs.hasOwnProperty('lines')) {
-            item.setAttr('lines', []);
-          }
-          if (item.getAttr('lines').indexOf(lineID) < 0) {
-            const _linesArray = item.getAttr('lines');
-            _linesArray.push(lineID);
-            item.setAttr('lines', _linesArray);
-          }
-        });
-        resolve(true);
+        // 判断当前是否只是更新部分内容（拖拽箭头位置）
+        if (inheritID) {
+          this.updateArrow(inheritID);
+        } else {
+          const lineID = this.createArrow();
+          // 将 arrow 的 id 分别添加入起始 block 和结束 block 的 lines 属性中
+          const startBlock = this.lineStartPoint.findAncestor('.blockElement'),
+            endBlock = this.lineEndPoint.findAncestor('.blockElement');
+          [startBlock, endBlock].map(item => {
+            if (!item.attrs.hasOwnProperty('lines')) {
+              item.setAttr('lines', []);
+            }
+            if (item.getAttr('lines').indexOf(lineID) < 0) {
+              const _linesArray = item.getAttr('lines');
+              _linesArray.push(lineID);
+              item.setAttr('lines', _linesArray);
+            }
+          });
+          this.resetActiveStatus(lineID);
+          resolve(true);
+        }
       } else {
         resolve(false);
       }
@@ -482,13 +499,11 @@ class Cade {
     if (_arrowStartPoint && _arrowEndPoint) {
       const startPos = _arrowStartPoint.absolutePosition(),
         endPos = _arrowEndPoint.absolutePosition();
-      // 销毁原有的箭头线段
-      if (_arrowID) {
-        this.lineLayer.findOne(`#${_arrowID}`).destroy();
-      }
       const arrowElement = new Konva.Group({
         name: 'arrowElement',
-        id: _arrowElementID
+        id: _arrowElementID,
+        startPoint: _arrowStartPoint.getAttr('id'),
+        endPoint: _arrowEndPoint.getAttr('id')
       });
       const arrow = new Konva.Arrow({
         points: cornerPoints({
@@ -500,8 +515,6 @@ class Cade {
         stroke: lineColor,
         pointerLength: 6,
         pointerWidth: 5,
-        startPoint: _arrowStartPoint.getAttr('id'),
-        endPoint: _arrowEndPoint.getAttr('id'),
         name: 'arrowLine',
         lineCap: 'round',
         lineJoin: 'round'
@@ -517,16 +530,31 @@ class Cade {
       arrowElement.add(arrowDragPoint);
       this.lineLayer.add(arrowElement);
       this.lineLayer.draw();
+      this.dbCreate();
       this.arrowEventBind(_arrowElementID);
-      _arrowID ? this.updateArrowObserve.next() : this.createArrowObserve.next();
+      _arrowID ? this.updateArrowObserve.next(arrowElement) : this.createArrowObserve.next(arrowElement);
       return _arrowElementID;
     }
   }
 
   // 更新 arrow
   updateArrow(arrowID) {
-    const _existLine = this.lineLayer.findOne(`#${arrowID}`).findOne('.arrowLine');
-    this.createArrow(_existLine.getAttr('startPoint'), _existLine.getAttr('endPoint'), arrowID);
+    const _existLine = this.lineLayer.findOne(`#${arrowID}`);
+    const _arrowStartPoint = this.lineStartPoint;
+    const _arrowEndPoint = this.lineEndPoint;
+    const startPos = _arrowStartPoint.absolutePosition(),
+      endPos = _arrowEndPoint.absolutePosition();
+    _existLine.findOne('.arrowLine').setAttr(
+      'points',
+      cornerPoints({
+        entryPoint: [startPos.x, startPos.y],
+        entryDirection: _arrowStartPoint.getAttr('direction'),
+        exitPoint: [endPos.x, endPos.y],
+        exitDirection: _arrowEndPoint.getAttr('direction')
+      })
+    );
+    this.lineLayer.draw();
+    this.dbCreate();
   }
 
   // arrow 事件绑定
@@ -557,14 +585,11 @@ class Cade {
         this.dragPointTouch(event);
       });
       arrowDragPoint.on('dragend', async event => {
-        const isCreateNewArrow = await this.dragPointEnd();
-        if (isCreateNewArrow) {
-          this.updateArrow(arrowID ? arrowID : event.currentTarget.findAncestor('.arrowElement').id());
-        } else {
-          arrowDragPoint.x(endPos[0]);
-          arrowDragPoint.y(endPos[1]);
-          this.lineLayer.draw();
-        }
+        const _arrowID = arrowID ? arrowID : event.currentTarget.findAncestor('.arrowElement').id();
+        await this.dragPointEnd(_arrowID);
+        arrowDragPoint.x(endPos[0]);
+        arrowDragPoint.y(endPos[1]);
+        this.lineLayer.draw();
       });
     });
   }
@@ -572,33 +597,43 @@ class Cade {
   // 销毁 arrow
   destroyArrow(arrowID) {
     const _arrowElement = this.lineLayer.findOne(`#${arrowID}`);
-    const _arrowLine = _arrowElement.findOne('.arrowLine');
     ['startPoint', 'endPoint'].map(item => {
-      const _ancestor = this.blockLayer.findOne(`#${_arrowLine.getAttr(item)}`).findAncestor('.blockElement');
+      const _ancestor = this.blockLayer.findOne(`#${_arrowElement.getAttr(item)}`).findAncestor('.blockElement');
       const _lines = _ancestor.getAttr('lines');
       _lines.splice(_lines.indexOf(arrowID), 1);
       _ancestor.setAttr('lines', _lines);
     });
     _arrowElement.destroy();
     this.lineLayer.draw();
+    this.dbCreate();
   }
 
   // 设置激活状态
   resetActiveStatus(arrowID = undefined) {
-    this.focusElementID = arrowID;
-    const _currentElement = this.stage.findOne(`#${arrowID}`);
-    if (_currentElement) {
-      switch (_currentElement.getAttr('name')) {
-        case 'blockElement':
-          this.resetActiveStatusOfBlock();
-          break;
-        case 'arrowElement':
-          this.resetActiveStatusOfArrow();
-          break;
+    // 放置多次点击统一元素时多次触发 focus 和 blur 的监听
+    if (this.focusElementID != arrowID) {
+      const _prevElement = this.stage.findOne(`#${this.focusElementID}`);
+      if (_prevElement) {
+        this.elementBlurObserve.next(_prevElement);
       }
-    } else {
-      this.resetActiveStatusOfBlock();
-      this.resetActiveStatusOfArrow();
+      this.focusElementID = arrowID;
+      const _currentElement = this.stage.findOne(`#${arrowID}`);
+      if (_currentElement) {
+        this.elementFocusObserve.next(_currentElement);
+      }
+      if (_currentElement) {
+        switch (_currentElement.getAttr('name')) {
+          case 'blockElement':
+            this.resetActiveStatusOfBlock();
+            break;
+          case 'arrowElement':
+            this.resetActiveStatusOfArrow();
+            break;
+        }
+      } else {
+        this.resetActiveStatusOfBlock();
+        this.resetActiveStatusOfArrow();
+      }
     }
     this.stage.draw();
   }
@@ -611,7 +646,7 @@ class Cade {
 
   onElementBlur() {
     return Observable.create(observer => {
-      this.elementActiveObserve = observer;
+      this.elementBlurObserve = observer;
     });
   }
 
@@ -619,7 +654,6 @@ class Cade {
     this.blockLayer.find('.blockElement').map(item => {
       const booleanValue = item.getAttr('id') === this.focusElementID;
       const _pElement = item.findOne('.blockPointElement');
-      Boolean(this.focusElementID) ? this.elementFocusObserve.next(_pElement) : this.elementActiveObserve.next(_pElement);
       _pElement.zIndex(booleanValue ? 3 : 0);
       _pElement.opacity(booleanValue ? 1 : 0);
       _pElement.find('.blockPointGroup').map(pointItem => {
@@ -637,43 +671,102 @@ class Cade {
     this.lineLayer.draw();
   }
 
+  delegate(agent, type, selctor, fn) {
+    //agent.addEventListener(type,fn)如果是这样fn中的this会指向agent
+    agent.addEventListener(
+      type,
+      function(e) {
+        let target = e.target; //target指向实际点击的最里层的元素
+        let ctarget = e.currentTarget; //ctarget会永远指向agent
+        let bubble = true;
+        while (bubble && target != ctarget) {
+          if (target.matches(selctor)) {
+            //改变this的指向
+            bubble = fn.call(target, e) === false ? false : true;
+          }
+          target = target.parentNode; //模拟事件冒泡
+          if (!bubble) {
+            e.preventDefault();
+          }
+        }
+      },
+      false
+    );
+  }
+
+  hasClass(elem, cls) {
+    cls = cls || '';
+    if (cls.replace(/\s/g, '').length == 0) return false; //当cls没有参数时，返回false
+    return new RegExp(' ' + cls + ' ').test(' ' + elem.className + ' ');
+  }
+
+  addClass(ele, cls) {
+    if (!this.hasClass(ele, cls)) {
+      ele.className = ele.className == '' ? cls : ele.className + ' ' + cls;
+    }
+  }
+
+  removeClass(ele, cls) {
+    if (this.hasClass(ele, cls)) {
+      var newClass = ' ' + ele.className.replace(/[\t\r\n]/g, '') + ' ';
+      while (newClass.indexOf(' ' + cls + ' ') >= 0) {
+        newClass = newClass.replace(' ' + cls + ' ', ' ');
+      }
+      ele.className = newClass.replace(/^\s+|\s+$/g, '');
+    }
+  }
+
   // frame
   frameInit() {
+    // 重置数据库
+    this.dbInit();
+    // 监听顶部按钮
+    const cadeHeader = document.querySelector('.cade-header');
+    this.delegate(cadeHeader, 'click', '#cade-undo-btn', () => {
+      if (this.historyIndex >= 0) {
+        this.historyIndex -= 1;
+      }
+      this.historyBtnActive();
+    });
+    this.delegate(cadeHeader, 'click', '#cade-redo-btn', () => {
+      const historyLength = this.historyArray.length;
+      if (historyLength > 0 && this.historyIndex < historyLength) {
+        this.historyIndex += 1;
+      }
+      this.historyBtnActive();
+    });
+    this.historyBtnActive();
+    this.delegate(cadeHeader, 'click', '#cade-delete-btn', () => {
+      this.elementDelete();
+    });
+    this.delegate(cadeHeader, 'click', '#cade-save-btn', () => {});
+    this.delegate(cadeHeader, 'click', '#cade-empty-btn', () => {
+      this.stageClear();
+    });
+    this.delegate(cadeHeader, 'click', '#cade-export-btn', () => {
+      localStorage.jsonData = this.stage.toJSON();
+    });
+    this.delegate(cadeHeader, 'click', '#cade-import-btn', () => {
+      this.stageImport();
+    });
+    this.delegate(cadeHeader, 'dragstart', '.cade-header-btn', event => {
+      this.elementType = event.target.attributes.elementType.value;
+    });
     // 监听键盘事件
     document.querySelector('body').addEventListener('keyup', event => {
       if (event.keyCode === 8) {
-        this.elementDelet();
+        this.elementDelete();
       }
     });
-    document.querySelector('.cade-undo-btn').addEventListener('click', () => {});
-    document.querySelector('.cade-delete-btn').addEventListener('click', () => {
-      this.elementDelet();
-    });
-    document.querySelector('.cade-empty-btn').addEventListener('click', () => {
-      this.stageClear();
-      console.log(this.stage.toJSON());
-    });
-    // 监听顶部按钮
-    document.querySelector('.cade-export-btn').addEventListener('click', () => {
-      localStorage.jsonData = this.stage.toJSON();
-    });
-    document.querySelector('.cade-import-btn').addEventListener('click', () => {
-      this.stageImport();
-    });
-    const cadeBlockElement = document.querySelectorAll('.cade-blockElement');
-    for (let index = 0; index < cadeBlockElement.length; index++) {
-      cadeBlockElement[index].addEventListener('dragstart', event => {
-        this.elementType = event.target.attributes.elementType.value;
-      });
-    }
     // chrome 下需要阻止dragenter和dragover的默认行为才可以触发drop
-    document.querySelector('#cade-content').addEventListener('dragenter', event => {
+    const body = document.querySelector('body');
+    this.delegate(body, 'dragenter', '#cade-content', event => {
       event.preventDefault();
     });
-    document.querySelector('#cade-content').addEventListener('dragover', event => {
+    this.delegate(body, 'dragover', '#cade-content', event => {
       event.preventDefault();
     });
-    document.querySelector('#cade-content').addEventListener('drop', event => {
+    this.delegate(body, 'drop', '#cade-content', event => {
       if (event.target.tagName === 'CANVAS') {
         this.createBlock({
           x: event.offsetX,
@@ -685,7 +778,23 @@ class Cade {
     });
   }
 
-  elementDelet() {
+  historyBtnActive() {
+    const undoBtn = document.querySelector('#cade-undo-btn'),
+      redoBtn = document.querySelector('#cade-redo-btn');
+    const historyLength = this.historyArray.length;
+    if (this.historyIndex < 0) {
+      this.addClass(undoBtn, 'disable');
+    } else {
+      this.removeClass(undoBtn, 'disable');
+    }
+    if (this.historyIndex >= historyLength - 1) {
+      this.addClass(redoBtn, 'disable');
+    } else {
+      this.removeClass(redoBtn, 'disable');
+    }
+  }
+
+  elementDelete() {
     const focusElement = this.stage.findOne(`#${this.focusElementID}`);
     switch (focusElement.getAttr('name')) {
       case 'blockElement':
@@ -695,6 +804,26 @@ class Cade {
         this.destroyArrow(this.focusElementID);
         break;
     }
+  }
+
+  // 数据存储重置
+  dbInit() {
+    localforage.clear();
+    this.historyArray = [];
+    this.historyIndex = -1;
+  }
+
+  dbCreate() {
+    const _storageKey = this.randomID();
+    return localforage.setItem(_storageKey, this.stage.toJSON(), () => {
+      console.count();
+      this.historyArray.push(_storageKey);
+      this.historyIndex += 1;
+      if (this.historyArray.length - 1 > this.historyIndex) {
+        this.historyArray.splice(0, this.historyIndex);
+      }
+      this.historyBtnActive();
+    });
   }
 }
 

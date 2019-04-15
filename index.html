@@ -5,34 +5,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
     <title>Cade</title>
     <link rel="stylesheet" href="assets/init.css" />
-    <link rel="stylesheet" href="//at.alicdn.com/t/font_1134649_8w7ao6t8k9t.css" />
+    <link rel="stylesheet" href="//at.alicdn.com/t/font_1134649_q97ww9v141.css" />
   </head>
   <body>
     <div class="cade">
       <div class="cade-header clearfix">
         <div class="cade-header-btn-group clearfix">
-          <i class="cade-header-btn  iconfont icon-shangyibu cade-undo-btn" title="撤销"></i>
-          <i class="cade-header-btn  iconfont icon-xiayibu " title="重做"></i>
+          <i id="cade-undo-btn" class="cade-header-btn  iconfont icon-shangyibu disable" title="撤销"></i>
+          <i id="cade-redo-btn" class="cade-header-btn  iconfont icon-xiayibu disable" title="重做"></i>
+          <i id="cade-save-btn" class="cade-header-btn  iconfont icon-save " title="保存"></i>
         </div>
         <div class="cade-header-btn-group clearfix">
-          <i class="cade-header-btn  iconfont icon-trasho cade-delete-btn" title="删除"></i>
-          <i class="cade-header-btn  iconfont icon-clean-up cade-empty-btn" title="清空"></i>
+          <i id="cade-delete-btn" class="cade-header-btn  iconfont icon-trasho " title="删除"></i>
+          <i id="cade-empty-btn" class="cade-header-btn  iconfont icon-clean-up " title="清空"></i>
           <i class="cade-header-btn  iconfont icon-sousuofangda" title="放大"></i>
           <i class="cade-header-btn  iconfont icon-sousuobianxiao" title="缩小"></i>
         </div>
         <div class="cade-header-btn-group clearfix">
-          <i class="cade-header-btn  iconfont icon-APIjieru cade-import-btn" title="导入数据"></i>
-          <i class="cade-header-btn  iconfont icon-APIshuchu cade-export-btn" title="导出数据"></i>
+          <i id="cade-import-btn" class="cade-header-btn  iconfont icon-APIjieru" title="导入数据"></i>
+          <i id="cade-export-btn" class="cade-header-btn  iconfont icon-APIshuchu" title="导出数据"></i>
         </div>
         <div class="cade-header-btn-group clearfix">
           <i
-            class="cade-header-btn cade-blockElement iconfont icon-xingzhuang-tuoyuanxing cade-circle"
+            id="cade-circle"
+            class="cade-header-btn cade-blockElement iconfont icon-xingzhuang-tuoyuanxing "
             draggable="true"
             elementType="circle"
             title="圆形节点"
           ></i>
           <i
-            class="cade-header-btn cade-blockElement iconfont icon-xingzhuang-juxing cade-rect"
+            id="cade-rect"
+            class="cade-header-btn cade-blockElement iconfont icon-xingzhuang-juxing"
             draggable="true"
             elementType="rect"
             title="方形节点"
@@ -40,14 +43,6 @@
         </div>
       </div>
       <div class="cade-body">
-        <!--              <ul class="cade-element-list clearfix">-->
-        <!--                <li class="cade-element-item">-->
-        <!--                  <div class="cade-blockElement cade-rect" draggable="true" elementType="rect">方形</div>-->
-        <!--                </li>-->
-        <!--                <li class="cade-element-item">-->
-        <!--                  <div class="cade-blockElement cade-circle" draggable="true" elementType="circle">圆形</div>-->
-        <!--                </li>-->
-        <!--              </ul>-->
         <div id="cade-content"></div>
         <div id="cade-panel">
           <div id="cade-panel-rect"></div>

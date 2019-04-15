@@ -19,11 +19,16 @@ myCade.onUpdateArrow().subscribe(res => {
   console.log('arrowElement Update');
 });
 myCade.onElementFocus().subscribe(res => {
-  console.log(res);
-  document.querySelector('#cade-panel').setAttribute('class', 'active');
+  console.log('focus');
+  if (res) {
+    console.log(res.getAttr('id'));
+  }
 });
 myCade.onElementBlur().subscribe(res => {
-  document.querySelector('#cade-panel').setAttribute('class', '');
+  console.log('blur');
+  if (res) {
+    console.log(res.getAttr('id'));
+  }
 });
 myCade.createBlock({
   x: 200,
