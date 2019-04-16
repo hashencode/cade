@@ -260,7 +260,7 @@ class Cade {
         blockDash.x(0);
         blockDash.y(0);
         this.blockLayer.draw();
-        const _lines = blockDash.findAncestor('.blockElement').getAttr('lines');
+        const _lines = cloneDeep(blockDash.findAncestor('.blockElement').getAttr('lines'));
         if (_lines && _lines.length > 0) {
           _lines.map(item => {
             this.updateArrow(item);
@@ -401,25 +401,11 @@ class Cade {
       if (this.lineEndPoint) {
         // 判断当前是否只是更新部分内容（拖拽箭头位置）
         if (inheritID) {
-          this.updateArrow(inheritID);
+          this.changeArrowPosition(inheritID);
         } else {
-          const lineID = this.createArrow();
-          // 将 arrow 的 id 分别添加入起始 block 和结束 block 的 lines 属性中
-          const startBlock = this.lineStartPoint.findAncestor('.blockElement'),
-            endBlock = this.lineEndPoint.findAncestor('.blockElement');
-          [startBlock, endBlock].map(item => {
-            if (!item.attrs.hasOwnProperty('lines')) {
-              item.setAttr('lines', []);
-            }
-            if (item.getAttr('lines').indexOf(lineID) < 0) {
-              const _linesArray = item.getAttr('lines');
-              _linesArray.push(lineID);
-              item.setAttr('lines', _linesArray);
-            }
-          });
-          this.resetActiveStatus(lineID);
-          resolve(true);
+          this.createArrow();
         }
+        resolve(true);
       } else {
         resolve(false);
       }
@@ -497,6 +483,11 @@ class Cade {
     const _arrowStartPoint = _startPointID ? this.blockLayer.findOne(`#${_startPointID}`) : this.lineStartPoint;
     const _arrowEndPoint = _endPointID ? this.blockLayer.findOne(`#${_endPointID}`) : this.lineEndPoint;
     if (_arrowStartPoint && _arrowEndPoint) {
+      // 销毁原有的箭头线段
+      if (_arrowID) {
+        this.destroyArrow(_arrowID);
+        // this.lineLayer.findOne(`#${_arrowID}`).destroy();
+      }
       const startPos = _arrowStartPoint.absolutePosition(),
         endPos = _arrowEndPoint.absolutePosition();
       const arrowElement = new Konva.Group({
@@ -530,8 +521,23 @@ class Cade {
       arrowElement.add(arrowDragPoint);
       this.lineLayer.add(arrowElement);
       this.lineLayer.draw();
-      this.dbCreate();
+      // 将 arrow 的 id 分别添加入起始 block 和结束 block 的 lines 属性中
+      const startBlock = this.lineStartPoint.findAncestor('.blockElement'),
+        endBlock = this.lineEndPoint.findAncestor('.blockElement');
+      [startBlock, endBlock].map(item => {
+        if (!item.attrs.hasOwnProperty('lines')) {
+          item.setAttr('lines', []);
+        }
+        if (item.getAttr('lines').indexOf(_arrowElementID) < 0) {
+          const _linesArray = item.getAttr('lines');
+          _linesArray.push(_arrowElementID);
+          item.setAttr('lines', _linesArray);
+        }
+      });
+      this.resetActiveStatus(_arrowElementID);
       this.arrowEventBind(_arrowElementID);
+      this.dbCreate();
+      // 监听回调
       _arrowID ? this.updateArrowObserve.next(arrowElement) : this.createArrowObserve.next(arrowElement);
       return _arrowElementID;
     }
@@ -539,6 +545,11 @@ class Cade {
 
   // 更新 arrow
   updateArrow(arrowID) {
+    const _existLine = this.lineLayer.findOne(`#${arrowID}`);
+    this.createArrow(_existLine.getAttr('startPoint'), _existLine.getAttr('endPoint'), arrowID);
+  }
+
+  changeArrowPosition(arrowID) {
     const _existLine = this.lineLayer.findOne(`#${arrowID}`);
     const _arrowStartPoint = this.lineStartPoint;
     const _arrowEndPoint = this.lineEndPoint;
@@ -554,6 +565,7 @@ class Cade {
       })
     );
     this.lineLayer.draw();
+    this.updateArrowObserve.next(_existLine);
     this.dbCreate();
   }
 
@@ -816,7 +828,6 @@ class Cade {
   dbCreate() {
     const _storageKey = this.randomID();
     return localforage.setItem(_storageKey, this.stage.toJSON(), () => {
-      console.count();
       this.historyArray.push(_storageKey);
       this.historyIndex += 1;
       if (this.historyArray.length - 1 > this.historyIndex) {
