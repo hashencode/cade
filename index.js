@@ -30,8 +30,3 @@ myCade.onElementBlur().subscribe(res => {
     console.log(res.getAttr('id'));
   }
 });
-myCade.createBlock({
-  x: 200,
-  y: 100,
-  type: 'rect'
-});

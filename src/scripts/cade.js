@@ -79,10 +79,11 @@ class Cade {
     this.stage.draw();
   }
 
-  stageImport() {
+  stageImport(_data) {
     this.stageClear();
-    const jsonData = localStorage.jsonData;
-    this.stage = Konva.Node.create(jsonData, 'cade-content');
+    if (_data) {
+      this.stage = Konva.Node.create(_data, 'cade-content');
+    }
     this.stage.children.map(layerItem => {
       this[layerItem.attrs.name] = layerItem;
     });
@@ -263,7 +264,7 @@ class Cade {
         const _lines = cloneDeep(blockDash.findAncestor('.blockElement').getAttr('lines'));
         if (_lines && _lines.length > 0) {
           _lines.map(item => {
-            this.updateArrow(item);
+            this.changeArrowPosition(item);
           });
         }
       });
@@ -486,7 +487,6 @@ class Cade {
       // 销毁原有的箭头线段
       if (_arrowID) {
         this.destroyArrow(_arrowID);
-        // this.lineLayer.findOne(`#${_arrowID}`).destroy();
       }
       const startPos = _arrowStartPoint.absolutePosition(),
         endPos = _arrowEndPoint.absolutePosition();
@@ -522,18 +522,7 @@ class Cade {
       this.lineLayer.add(arrowElement);
       this.lineLayer.draw();
       // 将 arrow 的 id 分别添加入起始 block 和结束 block 的 lines 属性中
-      const startBlock = this.lineStartPoint.findAncestor('.blockElement'),
-        endBlock = this.lineEndPoint.findAncestor('.blockElement');
-      [startBlock, endBlock].map(item => {
-        if (!item.attrs.hasOwnProperty('lines')) {
-          item.setAttr('lines', []);
-        }
-        if (item.getAttr('lines').indexOf(_arrowElementID) < 0) {
-          const _linesArray = item.getAttr('lines');
-          _linesArray.push(_arrowElementID);
-          item.setAttr('lines', _linesArray);
-        }
-      });
+      this.insertArrowIDToBlockLines(_arrowElementID);
       this.resetActiveStatus(_arrowElementID);
       this.arrowEventBind(_arrowElementID);
       this.dbCreate();
@@ -543,27 +532,58 @@ class Cade {
     }
   }
 
-  // 更新 arrow
-  updateArrow(arrowID) {
-    const _existLine = this.lineLayer.findOne(`#${arrowID}`);
-    this.createArrow(_existLine.getAttr('startPoint'), _existLine.getAttr('endPoint'), arrowID);
+  // 更新所连接的 block 内的 lines 属性
+  removeArrowIDFromBlockLines(arrowID) {
+    const _arrowElement = this.lineLayer.findOne(`#${arrowID}`);
+    ['startPoint', 'endPoint'].map(item => {
+      const _ancestor = this.blockLayer.findOne(`#${_arrowElement.getAttr(item)}`).findAncestor('.blockElement');
+      const _lines = _ancestor.getAttr('lines');
+      _lines.splice(_lines.indexOf(arrowID), 1);
+      _ancestor.setAttr('lines', _lines);
+    });
   }
 
+  insertArrowIDToBlockLines(arrowID) {
+    const startBlock = this.lineStartPoint.findAncestor('.blockElement'),
+      endBlock = this.lineEndPoint.findAncestor('.blockElement');
+    [startBlock, endBlock].map(item => {
+      if (!item.attrs.hasOwnProperty('lines')) {
+        item.setAttr('lines', []);
+      }
+      if (item.getAttr('lines').indexOf(arrowID) < 0) {
+        const _linesArray = item.getAttr('lines');
+        _linesArray.push(arrowID);
+        item.setAttr('lines', _linesArray);
+      }
+    });
+  }
+
+  // 只更新 arrow 的连接点，不更新其他属性
   changeArrowPosition(arrowID) {
+    // 更新连接点属性
     const _existLine = this.lineLayer.findOne(`#${arrowID}`);
-    const _arrowStartPoint = this.lineStartPoint;
-    const _arrowEndPoint = this.lineEndPoint;
-    const startPos = _arrowStartPoint.absolutePosition(),
-      endPos = _arrowEndPoint.absolutePosition();
+    const startPos = this.lineStartPoint.absolutePosition(),
+      endPos = this.lineEndPoint.absolutePosition();
     _existLine.findOne('.arrowLine').setAttr(
       'points',
       cornerPoints({
         entryPoint: [startPos.x, startPos.y],
-        entryDirection: _arrowStartPoint.getAttr('direction'),
+        entryDirection: this.lineStartPoint.getAttr('direction'),
         exitPoint: [endPos.x, endPos.y],
-        exitDirection: _arrowEndPoint.getAttr('direction')
+        exitDirection: this.lineEndPoint.getAttr('direction')
       })
     );
+
+    // 先删除之前关联的 block 内的 lines 属性
+    this.removeArrowIDFromBlockLines(arrowID);
+    // 为 arrow 添加 startPoint 和 endPoint 属性
+    _existLine.setAttrs({
+      startPoint: this.lineStartPoint.getAttr('id'),
+      endPoint: this.lineEndPoint.getAttr('id')
+    });
+    // 为所连接的 block 更新 lines 属性
+    this.insertArrowIDToBlockLines(arrowID);
+    this.blockLayer.draw();
     this.lineLayer.draw();
     this.updateArrowObserve.next(_existLine);
     this.dbCreate();
@@ -575,7 +595,6 @@ class Cade {
     arrowElement.map(arrowElementItem => {
       const arrowDragPoint = arrowElementItem.findOne('.arrowDragPoint');
       const arrowLine = arrowElementItem.findOne('.arrowLine');
-      const endPos = arrowLine.getAttr('points').slice(-2);
       arrowLine.on('mouseenter', () => {
         arrowLine.stroke(primaryStroke);
         this.lineLayer.draw();
@@ -599,6 +618,7 @@ class Cade {
       arrowDragPoint.on('dragend', async event => {
         const _arrowID = arrowID ? arrowID : event.currentTarget.findAncestor('.arrowElement').id();
         await this.dragPointEnd(_arrowID);
+        const endPos = arrowLine.getAttr('points').slice(-2);
         arrowDragPoint.x(endPos[0]);
         arrowDragPoint.y(endPos[1]);
         this.lineLayer.draw();
@@ -608,13 +628,8 @@ class Cade {
 
   // 销毁 arrow
   destroyArrow(arrowID) {
+    this.removeArrowIDFromBlockLines(arrowID);
     const _arrowElement = this.lineLayer.findOne(`#${arrowID}`);
-    ['startPoint', 'endPoint'].map(item => {
-      const _ancestor = this.blockLayer.findOne(`#${_arrowElement.getAttr(item)}`).findAncestor('.blockElement');
-      const _lines = _ancestor.getAttr('lines');
-      _lines.splice(_lines.indexOf(arrowID), 1);
-      _ancestor.setAttr('lines', _lines);
-    });
     _arrowElement.destroy();
     this.lineLayer.draw();
     this.dbCreate();
@@ -633,19 +648,8 @@ class Cade {
       if (_currentElement) {
         this.elementFocusObserve.next(_currentElement);
       }
-      if (_currentElement) {
-        switch (_currentElement.getAttr('name')) {
-          case 'blockElement':
-            this.resetActiveStatusOfBlock();
-            break;
-          case 'arrowElement':
-            this.resetActiveStatusOfArrow();
-            break;
-        }
-      } else {
-        this.resetActiveStatusOfBlock();
-        this.resetActiveStatusOfArrow();
-      }
+      this.resetActiveStatusOfBlock();
+      this.resetActiveStatusOfArrow();
     }
     this.stage.draw();
   }
@@ -672,12 +676,13 @@ class Cade {
         booleanValue ? this.blockPointEventBind(pointItem) : pointItem.off('mouseenter');
       });
     });
+    this.blockLayer.draw();
   }
 
   resetActiveStatusOfArrow() {
     this.lineLayer.find('.arrowElement').map(item => {
       const booleanValue = item.getAttr('id') === this.focusElementID;
-      const _arrowLine = item.find('.arrowLine');
+      const _arrowLine = item.findOne('.arrowLine');
       _arrowLine.stroke(booleanValue ? primaryStroke : lineColor);
     });
     this.lineLayer.draw();
@@ -737,6 +742,10 @@ class Cade {
     this.delegate(cadeHeader, 'click', '#cade-undo-btn', () => {
       if (this.historyIndex >= 0) {
         this.historyIndex -= 1;
+
+        localforage.getItem(this.historyArray[this.historyIndex]).then(res => {
+          this.stageImport(res);
+        });
       }
       this.historyBtnActive();
     });
@@ -744,6 +753,9 @@ class Cade {
       const historyLength = this.historyArray.length;
       if (historyLength > 0 && this.historyIndex < historyLength) {
         this.historyIndex += 1;
+        localforage.getItem(this.historyArray[this.historyIndex]).then(res => {
+          this.stageImport(res);
+        });
       }
       this.historyBtnActive();
     });
