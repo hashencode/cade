@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
     <title>Cade</title>
     <link rel="stylesheet" href="assets/init.css" />
-    <link rel="stylesheet" href="//at.alicdn.com/t/font_1134649_q97ww9v141.css" />
+    <link rel="stylesheet" href="//at.alicdn.com/t/font_1134649_8oiqf5oycor.css" />
   </head>
   <body>
     <div class="cade">
@@ -18,8 +18,8 @@
         <div class="cade-header-btn-group clearfix">
           <i id="cade-delete-btn" class="cade-header-btn  iconfont icon-trasho " title="删除"></i>
           <i id="cade-empty-btn" class="cade-header-btn  iconfont icon-clean-up " title="清空"></i>
-          <!--          <i class="cade-header-btn  iconfont icon-sousuofangda" title="放大"></i>-->
-          <!--          <i class="cade-header-btn  iconfont icon-sousuobianxiao" title="缩小"></i>-->
+          <i id="cade-zoom-up" class="cade-header-btn  iconfont icon-sousuofangda" title="放大"></i>
+          <i id="cade-zoom-down" class="cade-header-btn  iconfont icon-sousuobianxiao" title="缩小"></i>
         </div>
         <!--        <div class="cade-header-btn-group clearfix">-->
         <!--          <i id="cade-import-btn" class="cade-header-btn  iconfont icon-APIjieru" title="导入数据"></i>-->
@@ -39,6 +39,13 @@
             draggable="true"
             elementType="rect"
             title="方形节点"
+          ></i>
+          <i
+            id="cade-polygon"
+            class="cade-header-btn cade-blockElement iconfont icon-cc-block"
+            draggable="true"
+            elementType="polygon"
+            title="菱形节点"
           ></i>
         </div>
       </div>

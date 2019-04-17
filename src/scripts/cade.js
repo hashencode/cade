@@ -8,6 +8,8 @@ const primaryStroke = '#5dafff',
   primaryFill = '#e7f7ff',
   warningStroke = '#ffc576',
   warningFill = '#fef7e7',
+  pinkStroke = '#bd90ee',
+  pinkFill = '#f9efff',
   lineColor = '#abb7c5';
 class Cade {
   constructor() {
@@ -24,6 +26,7 @@ class Cade {
     this.elementBlurObserve = null; // element释放监听
     this.historyArray = [];
     this.historyIndex = -1;
+    this.zoomvalue = 1;
   }
 
   // 生成唯一ID
@@ -42,6 +45,7 @@ class Cade {
       container: 'cade-content',
       width: stageDom.clientWidth,
       height: stageDom.clientHeight
+      // draggable: true
     });
     this.blockLayer = new Konva.Layer({
       name: 'blockLayer'
@@ -179,6 +183,30 @@ class Cade {
         // 绘制拖动虚线框
         blockDash = new Konva.Circle(Object.assign(commonBlockDashConfig, blockDashConfig));
         break;
+      case 'polygon':
+        elementConfig = Object.assign(
+          {
+            width: 80,
+            height: 80,
+            fill: pinkFill,
+            stroke: pinkStroke,
+            strokeWidth: 1,
+            sides: 4
+          },
+          commonBlockConfig
+        );
+        groupConfig = { x: config ? config.x : 0, y: config ? config.y : 0 };
+        blockDashConfig = {
+          radius: elementConfig.width / 2,
+          stroke: primaryStroke,
+          sides: 4
+        };
+        blockTextConfig = { x: -elementConfig.width / 2, y: -elementConfig.height / 2 };
+        // 绘制 block
+        block = new Konva.RegularPolygon(elementConfig);
+        // 绘制拖动虚线框
+        blockDash = new Konva.RegularPolygon(Object.assign(commonBlockDashConfig, blockDashConfig));
+        break;
     }
     const blockElement = new Konva.Group({
       x: groupConfig.x,
@@ -212,7 +240,9 @@ class Cade {
     this.blockEventBind(blockID);
     // blockElement 创建反馈
     this.dbCreate();
-    this.createBlockObserve.next(blockElement);
+    if (this.createBlockObserve) {
+      this.createBlockObserve.next(blockElement);
+    }
   }
 
   destroyBlock(blockID) {
@@ -251,11 +281,16 @@ class Cade {
       });
       blockDash.on('dragmove', () => {
         blockDash.opacity(1);
+        // 在拖动的时候将当前的 block 设置为激活状态
+        this.resetActiveStatus(blockID);
       });
       blockDash.on('dragend', () => {
         currentBlockItem.setPosition(blockDash.getAbsolutePosition());
         // blockElement 更新反馈
-        this.updateBlockObserve.next(currentBlockItem);
+        if (this.updateBlockObserve) {
+          this.updateBlockObserve.next(currentBlockItem);
+        }
+
         // 隐藏 blockDash
         blockDash.opacity(0);
         blockDash.x(0);
@@ -264,7 +299,7 @@ class Cade {
         const _lines = cloneDeep(blockDash.findAncestor('.blockElement').getAttr('lines'));
         if (_lines && _lines.length > 0) {
           _lines.map(item => {
-            this.changeArrowPosition(item);
+            this.changeArrowPosition(item, true);
           });
         }
       });
@@ -513,8 +548,11 @@ class Cade {
       const arrowDragPoint = new Konva.Circle({
         x: endPos.x,
         y: endPos.y,
-        radius: 10,
+        radius: 8,
         name: 'arrowDragPoint',
+        fill: 'white',
+        stroke: primaryStroke,
+        opacity: 0,
         draggable: true
       });
       arrowElement.add(arrow);
@@ -527,7 +565,10 @@ class Cade {
       this.arrowEventBind(_arrowElementID);
       this.dbCreate();
       // 监听回调
-      _arrowID ? this.updateArrowObserve.next(arrowElement) : this.createArrowObserve.next(arrowElement);
+      if (this.updateArrowObserve) {
+        _arrowID ? this.updateArrowObserve.next(arrowElement) : this.createArrowObserve.next(arrowElement);
+      }
+
       return _arrowElementID;
     }
   }
@@ -544,8 +585,9 @@ class Cade {
   }
 
   insertArrowIDToBlockLines(arrowID) {
-    const startBlock = this.lineStartPoint.findAncestor('.blockElement'),
-      endBlock = this.lineEndPoint.findAncestor('.blockElement');
+    const currentLine = this.lineLayer.findOne(`#${arrowID}`);
+    const startBlock = this.blockLayer.findOne(`#${currentLine.getAttr('startPoint')}`).findAncestor('.blockElement'),
+      endBlock = this.blockLayer.findOne(`#${currentLine.getAttr('endPoint')}`).findAncestor('.blockElement');
     [startBlock, endBlock].map(item => {
       if (!item.attrs.hasOwnProperty('lines')) {
         item.setAttr('lines', []);
@@ -559,33 +601,36 @@ class Cade {
   }
 
   // 只更新 arrow 的连接点，不更新其他属性
-  changeArrowPosition(arrowID) {
+  changeArrowPosition(arrowID, isBlockMove = false) {
     // 更新连接点属性
     const _existLine = this.lineLayer.findOne(`#${arrowID}`);
-    const startPos = this.lineStartPoint.absolutePosition(),
-      endPos = this.lineEndPoint.absolutePosition();
+    const _arrowStartPoint = isBlockMove ? this.blockLayer.findOne(`#${_existLine.getAttr('startPoint')}`) : this.lineStartPoint;
+    const _arrowEndPoint = isBlockMove ? this.blockLayer.findOne(`#${_existLine.getAttr('endPoint')}`) : this.lineEndPoint;
+    const startPos = _arrowStartPoint.absolutePosition(),
+      endPos = _arrowEndPoint.absolutePosition();
     _existLine.findOne('.arrowLine').setAttr(
       'points',
       cornerPoints({
         entryPoint: [startPos.x, startPos.y],
-        entryDirection: this.lineStartPoint.getAttr('direction'),
+        entryDirection: _arrowStartPoint.getAttr('direction'),
         exitPoint: [endPos.x, endPos.y],
-        exitDirection: this.lineEndPoint.getAttr('direction')
+        exitDirection: _arrowEndPoint.getAttr('direction')
       })
     );
-
     // 先删除之前关联的 block 内的 lines 属性
     this.removeArrowIDFromBlockLines(arrowID);
     // 为 arrow 添加 startPoint 和 endPoint 属性
     _existLine.setAttrs({
-      startPoint: this.lineStartPoint.getAttr('id'),
-      endPoint: this.lineEndPoint.getAttr('id')
+      startPoint: _arrowStartPoint.getAttr('id'),
+      endPoint: _arrowEndPoint.getAttr('id')
     });
     // 为所连接的 block 更新 lines 属性
     this.insertArrowIDToBlockLines(arrowID);
     this.blockLayer.draw();
     this.lineLayer.draw();
-    this.updateArrowObserve.next(_existLine);
+    if (this.updateArrowObserve) {
+      this.updateArrowObserve.next(_existLine);
+    }
     this.dbCreate();
   }
 
@@ -608,6 +653,10 @@ class Cade {
       });
       arrowLine.on('click', event => {
         this.resetActiveStatus(arrowID ? arrowID : event.currentTarget.findAncestor('.arrowElement').id());
+        // 将 dragPoint 重置到原来的位置
+        const endPos = arrowLine.getAttr('points').slice(-2);
+        arrowDragPoint.x(endPos[0]);
+        arrowDragPoint.y(endPos[1]);
       });
       arrowDragPoint.on('mouseenter', () => {
         this.stage.container().style.cursor = 'crosshair';
@@ -618,6 +667,7 @@ class Cade {
       arrowDragPoint.on('dragend', async event => {
         const _arrowID = arrowID ? arrowID : event.currentTarget.findAncestor('.arrowElement').id();
         await this.dragPointEnd(_arrowID);
+        // 将 dragPoint 重置到原来的位置
         const endPos = arrowLine.getAttr('points').slice(-2);
         arrowDragPoint.x(endPos[0]);
         arrowDragPoint.y(endPos[1]);
@@ -640,12 +690,12 @@ class Cade {
     // 放置多次点击统一元素时多次触发 focus 和 blur 的监听
     if (this.focusElementID != arrowID) {
       const _prevElement = this.stage.findOne(`#${this.focusElementID}`);
-      if (_prevElement) {
+      if (_prevElement && this.elementBlurObserve) {
         this.elementBlurObserve.next(_prevElement);
       }
       this.focusElementID = arrowID;
       const _currentElement = this.stage.findOne(`#${arrowID}`);
-      if (_currentElement) {
+      if (_currentElement && this.elementFocusObserve) {
         this.elementFocusObserve.next(_currentElement);
       }
       this.resetActiveStatusOfBlock();
@@ -682,8 +732,11 @@ class Cade {
   resetActiveStatusOfArrow() {
     this.lineLayer.find('.arrowElement').map(item => {
       const booleanValue = item.getAttr('id') === this.focusElementID;
+      const _arrowDragPoint = item.findOne('.arrowDragPoint');
       const _arrowLine = item.findOne('.arrowLine');
       _arrowLine.stroke(booleanValue ? primaryStroke : lineColor);
+      _arrowDragPoint.opacity(booleanValue ? 1 : 0);
+      booleanValue ? this.arrowEventBind(item.getAttr('id')) : _arrowDragPoint.off('mouseenter dragmove dragend');
     });
     this.lineLayer.draw();
   }
@@ -742,7 +795,6 @@ class Cade {
     this.delegate(cadeHeader, 'click', '#cade-undo-btn', () => {
       if (this.historyIndex >= 0) {
         this.historyIndex -= 1;
-
         localforage.getItem(this.historyArray[this.historyIndex]).then(res => {
           this.stageImport(res);
         });
@@ -763,9 +815,25 @@ class Cade {
     this.delegate(cadeHeader, 'click', '#cade-delete-btn', () => {
       this.elementDelete();
     });
-    this.delegate(cadeHeader, 'click', '#cade-save-btn', () => {});
+    // this.delegate(cadeHeader, 'click', '#cade-save-btn', () => {});
     this.delegate(cadeHeader, 'click', '#cade-empty-btn', () => {
       this.stageClear();
+    });
+    this.delegate(cadeHeader, 'click', '#cade-zoom-up', () => {
+      this.zoomvalue += this.zoomvalue < 1.5 ? 0.1 : 0;
+      this.stage.scale({
+        x: this.zoomvalue,
+        y: this.zoomvalue
+      });
+      this.stage.draw();
+    });
+    this.delegate(cadeHeader, 'click', '#cade-zoom-down', () => {
+      this.zoomvalue -= this.zoomvalue > 0.5 ? 0.1 : 0;
+      this.stage.scale({
+        x: this.zoomvalue,
+        y: this.zoomvalue
+      });
+      this.stage.draw();
     });
     this.delegate(cadeHeader, 'click', '#cade-export-btn', () => {
       localStorage.jsonData = this.stage.toJSON();
