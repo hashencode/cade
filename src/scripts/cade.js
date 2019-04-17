@@ -290,7 +290,6 @@ class Cade {
         if (this.updateBlockObserve) {
           this.updateBlockObserve.next(currentBlockItem);
         }
-
         // 隐藏 blockDash
         blockDash.opacity(0);
         blockDash.x(0);
@@ -370,26 +369,18 @@ class Cade {
       // 判断当前是否处于绘线状态，如果不是，则创建dashLineDragPointCircle，并添加拖拽事件监听
       if (!this.lineDrawing) {
         const startPointTarget = this.lineStartPoint.absolutePosition();
+        // 用于拖拽的点
         let dashLineDragPointElement = this.stage.findOne('.dashLineDragPointElement');
         if (dashLineDragPointElement) {
           dashLineDragPointElement.destroy();
         }
-        dashLineDragPointElement = new Konva.Group({
+        dashLineDragPointElement = new Konva.Circle({
           x: startPointTarget.x,
           y: startPointTarget.y,
-          draggable: true,
-          name: 'dashLineDragPointElement'
-        });
-        // 用于拖拽的点
-        const dashLineDragPointCircle = new Konva.Circle({
           radius: 5,
           strokeWidth: 1,
-          name: 'dashLineDragPointCircle'
-        });
-        const dashLineDragPointCircleBorder = new Konva.Ring({
-          innerRadius: 5,
-          outerRadius: 11,
-          name: 'dashLineDragPointCircleBorder'
+          draggable: true,
+          name: 'dashLineDragPointElement'
         });
         dashLineDragPointElement.on('mouseenter', () => {
           this.stage.container().style.cursor = 'crosshair';
@@ -404,9 +395,8 @@ class Cade {
         dashLineDragPointElement.on('dragend', async () => {
           this.lineLayer.findOne('.dashLineDragPointElement').destroy();
           await this.dragPointEnd();
+          dashLineDragPointElement.destroy();
         });
-        dashLineDragPointElement.add(dashLineDragPointCircle);
-        dashLineDragPointElement.add(dashLineDragPointCircleBorder);
         this.lineLayer.add(dashLineDragPointElement);
         this.lineLayer.draw();
       }
@@ -514,15 +504,11 @@ class Cade {
   }
 
   // 绘制 arrowLine
-  createArrow(_startPointID, _endPointID, _arrowID) {
-    const _arrowElementID = _arrowID ? _arrowID : this.randomID();
-    const _arrowStartPoint = _startPointID ? this.blockLayer.findOne(`#${_startPointID}`) : this.lineStartPoint;
-    const _arrowEndPoint = _endPointID ? this.blockLayer.findOne(`#${_endPointID}`) : this.lineEndPoint;
+  createArrow() {
+    const _arrowElementID = this.randomID();
+    const _arrowStartPoint = this.lineStartPoint;
+    const _arrowEndPoint = this.lineEndPoint;
     if (_arrowStartPoint && _arrowEndPoint) {
-      // 销毁原有的箭头线段
-      if (_arrowID) {
-        this.destroyArrow(_arrowID);
-      }
       const startPos = _arrowStartPoint.absolutePosition(),
         endPos = _arrowEndPoint.absolutePosition();
       const arrowElement = new Konva.Group({
@@ -566,10 +552,9 @@ class Cade {
       this.dbCreate();
       // 监听回调
       if (this.updateArrowObserve) {
-        _arrowID ? this.updateArrowObserve.next(arrowElement) : this.createArrowObserve.next(arrowElement);
+        this.createArrowObserve.next(arrowElement);
       }
-
-      return _arrowElementID;
+      this.resetActiveStatus(_arrowElementID);
     }
   }
 
