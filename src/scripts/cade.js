@@ -15,6 +15,7 @@ class Cade {
   constructor() {
     this.stage = null;
     this.lineDrawing = false;
+    this.blockDragging = false;
     this.lineStartPoint = null;
     this.lineEndPoint = null;
     this.focusElementID = null; // 当前选择 element id
@@ -72,6 +73,7 @@ class Cade {
   }
 
   stageEventBind() {
+    let blockElement;
     // 判断当前点击是否是在空白区域，如果是，则清除所有选中状态
     this.stage.on('mousedown', event => {
       if (event.currentTarget == event.target) {
@@ -85,9 +87,27 @@ class Cade {
           this.lineDrawing = true;
         }else if( (/block*/).test(event.target.attrs.name) ){
           // 如果当前点击的是 blockElement
-          const blockElement = event.target.findAncestor('.blockElement');
-          this.createBlockDash(blockElement)
+           blockElement = event.target.findAncestor('.blockElement');
+            this.blockDragging = true;
         }
+      }
+    });
+    this.stage.on('mousemove',event=>{
+      if(event.target.attrs.hasOwnProperty('name')){
+        if( (/blockPoint*/).test(event.target.attrs.name) ){
+          // 如果当前点击的是 blockPoint
+          this.stage.container().style.cursor = 'crosshair';
+        }else if( (/block*/).test(event.target.attrs.name) ){
+          this.stage.container().style.cursor = 'move';
+        }
+      }else{
+        this.stage.container().style.cursor = 'default';
+      }
+      if(this.lineDrawing){
+        this.dragPointTouch(event)
+      };
+      if(this.blockDragging){
+        this.createBlockDash(blockElement)
       }
     });
     this.stage.on('mouseup',()=>{
@@ -95,11 +115,6 @@ class Cade {
       this.blockPointBorderVisiableSwitch(false);
       this.dragPointEnd();
     });
-    this.stage.on('mousemove',event=>{
-      if(this.lineDrawing){
-        this.dragPointTouch(event)
-      }
-    })
   }
 
   stageClear() {
@@ -256,7 +271,7 @@ class Cade {
     );
     blockElement.add(block);
     blockElement.add(blockText);
-    blockElement.add(blockDash);
+    // blockElement.add(blockDash);
     blockElement.add(this.createBlockPoint(block));
     this.blockLayer.add(blockElement);
     this.blockLayer.draw();
@@ -295,37 +310,38 @@ class Cade {
       currentBlockItem.on('click', () => {
         this.resetActiveStatus(currentBlockItem.getAttr('id'));
       });
-      const blockDash = currentBlockItem.findOne('.blockDash');
-      // 虚线框事件监听
-      blockDash.on('mouseenter', () => {
-        this.stage.container().style.cursor = 'move';
-      });
-      blockDash.on('mouseleave', () => {
-        this.stage.container().style.cursor = 'default';
-      });
-      blockDash.on('dragmove', () => {
-        blockDash.opacity(1);
-        // 在拖动的时候将当前的 block 设置为激活状态
-        this.resetActiveStatus(blockID);
-      });
-      blockDash.on('dragend', () => {
-        currentBlockItem.setPosition(blockDash.getAbsolutePosition());
-        // 隐藏 blockDash
-        blockDash.opacity(0);
-        blockDash.x(0);
-        blockDash.y(0);
-        this.blockLayer.draw();
-        const _lines = cloneDeep(blockDash.findAncestor('.blockElement').getAttr('lines'));
-        if (_lines && _lines.length > 0) {
-          _lines.map(item => {
-            this.changeArrowPosition(item, true);
-          });
-        }
-        // blockElement 更新反馈
-        if (this.updateBlockObserve) {
-          this.updateBlockObserve.next(currentBlockItem);
-        }
-      });
+
+      // const blockDash = currentBlockItem.findOne('.blockDash');
+      // // 虚线框事件监听
+      // blockDash.on('mouseenter', () => {
+      //   this.stage.container().style.cursor = 'move';
+      // });
+      // blockDash.on('mouseleave', () => {
+      //   this.stage.container().style.cursor = 'default';
+      // });
+      // blockDash.on('dragmove', () => {
+      //   blockDash.opacity(1);
+      //   // 在拖动的时候将当前的 block 设置为激活状态
+      //   this.resetActiveStatus(blockID);
+      // });
+      // blockDash.on('dragend', () => {
+      //   currentBlockItem.setPosition(blockDash.getAbsolutePosition());
+      //   // 隐藏 blockDash
+      //   blockDash.opacity(0);
+      //   blockDash.x(0);
+      //   blockDash.y(0);
+      //   this.blockLayer.draw();
+      //   const _lines = cloneDeep(blockDash.findAncestor('.blockElement').getAttr('lines'));
+      //   if (_lines && _lines.length > 0) {
+      //     _lines.map(item => {
+      //       this.changeArrowPosition(item, true);
+      //     });
+      //   }
+      //   // blockElement 更新反馈
+      //   if (this.updateBlockObserve) {
+      //     this.updateBlockObserve.next(currentBlockItem);
+      //   }
+      // });
       this.blockLayer.draw();
     });
   }
@@ -404,7 +420,7 @@ class Cade {
   }
 
   dragPointEnd(inheritID = undefined) {
-      this.stage.container().style.cursor = 'default';
+      // this.stage.container().style.cursor = 'default';
       this.lineDrawing = false;
       // 清除虚线
       this.destroyDashLine();
