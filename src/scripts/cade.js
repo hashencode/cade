@@ -53,8 +53,12 @@ class Cade {
     this.lineLayer = new Konva.Layer({
       name: 'lineLayer'
     });
+    this.actionLayer = new Konva.Layer({
+      name:'actionLayer'
+    });
     this.stage.add(this.blockLayer);
     this.stage.add(this.lineLayer);
+    this.stage.add(this.actionLayer);
     this.stageEventBind();
     const ro = new ResizeObserver(() => {
       this.stage.setAttrs({
@@ -69,11 +73,33 @@ class Cade {
 
   stageEventBind() {
     // 判断当前点击是否是在空白区域，如果是，则清除所有选中状态
-    this.stage.on('mousedown', e => {
-      if (e.currentTarget == e.target) {
+    this.stage.on('mousedown', event => {
+      if (event.currentTarget == event.target) {
         this.resetActiveStatus();
       }
+      if(event.target.attrs.hasOwnProperty('name')){
+        if( (/blockPoint*/).test(event.target.attrs.name) ){
+          // 如果当前点击的是 blockPoint
+          this.lineStartPoint = event.target.findAncestor('.blockPointGroup');
+          this.blockPointBorderVisiableSwitch(true);
+          this.lineDrawing = true;
+        }else if( (/block*/).test(event.target.attrs.name) ){
+          // 如果当前点击的是 blockElement
+          const blockElement = event.target.findAncestor('.blockElement');
+          this.createBlockDash(blockElement)
+        }
+      }
     });
+    this.stage.on('mouseup',()=>{
+      this.lineDrawing = false;
+      this.blockPointBorderVisiableSwitch(false);
+      this.dragPointEnd();
+    });
+    this.stage.on('mousemove',event=>{
+      if(this.lineDrawing){
+        this.dragPointTouch(event)
+      }
+    })
   }
 
   stageClear() {
@@ -121,7 +147,9 @@ class Cade {
       shadowColor: '#cdcdcd',
       shadowBlur: 10,
       shadowOffset: { x: 0, y: 0 },
-      shadowOpacity: 0.5
+      shadowOpacity: 0.5,
+      strokeWidth: 1,
+      name:'blockShape'
     };
     const commonBlockDashConfig = {
       x: 0,
@@ -135,7 +163,7 @@ class Cade {
     let block,
       blockDash,
       elementConfig,
-      groupConfig,
+      groupConfig = { x: config ? config.x : 0, y: config ? config.y : 0 },
       blockDashConfig,
       blockTextConfig = {};
     // 绘制框体
@@ -148,7 +176,6 @@ class Cade {
             height: 40,
             fill: primaryFill,
             stroke: primaryStroke,
-            strokeWidth: 1,
             cornerRadius: 4
           },
           commonBlockConfig
@@ -167,15 +194,13 @@ class Cade {
             width: 80,
             height: 80,
             fill: warningFill,
-            stroke: warningStroke,
-            strokeWidth: 1
+            stroke: warningStroke
           },
           commonBlockConfig
         );
-        groupConfig = { x: config ? config.x : 0, y: config ? config.y : 0 };
         blockDashConfig = {
           radius: elementConfig.width / 2,
-          stroke: primaryStroke
+          stroke: warningStroke
         };
         blockTextConfig = { x: -elementConfig.width / 2, y: -elementConfig.height / 2 };
         // 绘制 block
@@ -190,15 +215,13 @@ class Cade {
             height: 80,
             fill: pinkFill,
             stroke: pinkStroke,
-            strokeWidth: 1,
             sides: 4
           },
           commonBlockConfig
         );
-        groupConfig = { x: config ? config.x : 0, y: config ? config.y : 0 };
         blockDashConfig = {
           radius: elementConfig.width / 2,
-          stroke: primaryStroke,
+          stroke: pinkStroke,
           sides: 4
         };
         blockTextConfig = { x: -elementConfig.width / 2, y: -elementConfig.height / 2 };
@@ -237,6 +260,7 @@ class Cade {
     blockElement.add(this.createBlockPoint(block));
     this.blockLayer.add(blockElement);
     this.blockLayer.draw();
+    // 事件绑定
     this.blockEventBind(blockID);
     // blockElement 创建反馈
     this.dbCreate();
@@ -286,10 +310,6 @@ class Cade {
       });
       blockDash.on('dragend', () => {
         currentBlockItem.setPosition(blockDash.getAbsolutePosition());
-        // blockElement 更新反馈
-        if (this.updateBlockObserve) {
-          this.updateBlockObserve.next(currentBlockItem);
-        }
         // 隐藏 blockDash
         blockDash.opacity(0);
         blockDash.x(0);
@@ -301,9 +321,18 @@ class Cade {
             this.changeArrowPosition(item, true);
           });
         }
+        // blockElement 更新反馈
+        if (this.updateBlockObserve) {
+          this.updateBlockObserve.next(currentBlockItem);
+        }
       });
       this.blockLayer.draw();
     });
+  }
+
+  createBlockDash(blockElement){
+    blockElement.findOne('.blockShape').setAttr('dash',[5]);
+    this.blockLayer.draw()
   }
 
   // 绘制 blockPoint
@@ -362,50 +391,8 @@ class Cade {
     return blockPointElement;
   }
 
-  // 为 blockPoint 绑定事件
-  blockPointEventBind(_pointElement) {
-    _pointElement.on('mouseenter', enterEvent => {
-      this.lineStartPoint = enterEvent.currentTarget;
-      // 判断当前是否处于绘线状态，如果不是，则创建dashLineDragPointCircle，并添加拖拽事件监听
-      if (!this.lineDrawing) {
-        const startPointTarget = this.lineStartPoint.absolutePosition();
-        // 用于拖拽的点
-        let dashLineDragPointElement = this.stage.findOne('.dashLineDragPointElement');
-        if (dashLineDragPointElement) {
-          dashLineDragPointElement.destroy();
-        }
-        dashLineDragPointElement = new Konva.Circle({
-          x: startPointTarget.x,
-          y: startPointTarget.y,
-          radius: 5,
-          strokeWidth: 1,
-          draggable: true,
-          name: 'dashLineDragPointElement'
-        });
-        dashLineDragPointElement.on('mouseenter', () => {
-          this.stage.container().style.cursor = 'crosshair';
-        });
-        dashLineDragPointElement.on('mouseleave', () => {
-          this.stage.container().style.cursor = 'default';
-        });
-        dashLineDragPointElement.on('dragmove', event => {
-          this.lineDrawing = true;
-          this.dragPointTouch(event);
-        });
-        dashLineDragPointElement.on('dragend', async () => {
-          this.lineLayer.findOne('.dashLineDragPointElement').destroy();
-          await this.dragPointEnd();
-          dashLineDragPointElement.destroy();
-        });
-        this.lineLayer.add(dashLineDragPointElement);
-        this.lineLayer.draw();
-      }
-    });
-  }
-
   // 拖拽点处理函数
   dragPointTouch(event) {
-    this.blockPointBorderVisiableSwitch(true);
     // 找到与鼠标当前位置相交的 blockPointGroup，如果相交则设置为 lineEndPoint
     const touchShape = this.stage.getIntersection(this.stage.getPointerPosition(), 'Group');
     if (touchShape && touchShape.getAttr('name') === 'blockPointGroup') {
@@ -413,14 +400,11 @@ class Cade {
     } else {
       this.lineEndPoint = null;
     }
-    const gropPosition = event.currentTarget.absolutePosition();
-    this.createDashLine(gropPosition);
+    this.createDashLine(event.evt);
   }
 
   dragPointEnd(inheritID = undefined) {
-    return new Promise(resolve => {
       this.stage.container().style.cursor = 'default';
-      this.blockPointBorderVisiableSwitch(false);
       this.lineDrawing = false;
       // 清除虚线
       this.destroyDashLine();
@@ -431,11 +415,7 @@ class Cade {
         } else {
           this.createArrow();
         }
-        resolve(true);
-      } else {
-        resolve(false);
       }
-    });
   }
 
   // point 环的显隐
@@ -452,41 +432,41 @@ class Cade {
 
   // 绘制 dashLine
   createDashLine(mousePos) {
-    const lineByName = this.lineLayer.findOne(`.dashLine`);
-    const linePos = this.lineStartPoint.absolutePosition();
+    const lineByName = this.actionLayer.findOne(`.dashLine`),
+     linePos = this.lineStartPoint.absolutePosition(),
     // 对比宽高，设置不同的显示方式
-    const _width = Math.abs(mousePos.x - linePos.x),
-      _height = Math.abs(mousePos.y - linePos.y);
+     _width = Math.abs(mousePos.offsetX - linePos.x),
+      _height = Math.abs(mousePos.offsetY - linePos.y);
     let cornerX, cornerY;
     if (_width >= _height) {
-      cornerX = mousePos.x - linePos.x >= 0 ? linePos.x + _width : linePos.x - _width;
+      cornerX = mousePos.offsetX - linePos.x >= 0 ? linePos.x + _width : linePos.x - _width;
       cornerY = linePos.y;
     } else {
       cornerX = linePos.x;
-      cornerY = mousePos.y - linePos.y >= 0 ? linePos.y + _height : linePos.y - _height;
+      cornerY = mousePos.offsetY - linePos.y >= 0 ? linePos.y + _height : linePos.y - _height;
     }
     // 判断当前是否已经存在虚线，如果存在则更新而不创建
     if (lineByName) {
-      lineByName.setAttrs({ points: [linePos.x, linePos.y, cornerX, cornerY, mousePos.x, mousePos.y] });
+      lineByName.setAttrs({ points: [linePos.x, linePos.y, cornerX, cornerY, mousePos.offsetX, mousePos.offsetY] });
       lineByName.getParent().draw();
     } else {
       const line = new Konva.Line({
-        points: [linePos.x, linePos.y, cornerX, cornerY, mousePos.x, mousePos.y],
+        points: [linePos.x, linePos.y, cornerX, cornerY, mousePos.offsetX, mousePos.offsetY],
         stroke: primaryStroke,
         name: 'dashLine',
         dash: [5]
       });
-      this.lineLayer.add(line);
+      this.actionLayer.add(line);
     }
   }
 
   // 销毁 dashline
   destroyDashLine() {
-    const lineByName = this.lineLayer.find(`.dashLine`);
+    const lineByName = this.actionLayer.find(`.dashLine`);
     lineByName.each(item => {
       item.destroy();
     });
-    this.lineLayer.draw();
+    this.actionLayer.draw();
   }
 
   // arrow 创建观察
@@ -506,23 +486,21 @@ class Cade {
   // 绘制 arrowLine
   createArrow() {
     const _arrowElementID = this.randomID();
-    const _arrowStartPoint = this.lineStartPoint;
-    const _arrowEndPoint = this.lineEndPoint;
-    if (_arrowStartPoint && _arrowEndPoint) {
-      const startPos = _arrowStartPoint.absolutePosition(),
-        endPos = _arrowEndPoint.absolutePosition();
+    if (this.lineStartPoint && this.lineEndPoint) {
+      const startPos = this.lineStartPoint.absolutePosition(),
+        endPos = this.lineEndPoint.absolutePosition();
       const arrowElement = new Konva.Group({
         name: 'arrowElement',
         id: _arrowElementID,
-        startPoint: _arrowStartPoint.getAttr('id'),
-        endPoint: _arrowEndPoint.getAttr('id')
+        startPoint: this.lineStartPoint.getAttr('id'),
+        endPoint: this.lineEndPoint.getAttr('id')
       });
       const arrow = new Konva.Arrow({
         points: cornerPoints({
           entryPoint: [startPos.x, startPos.y],
-          entryDirection: _arrowStartPoint.getAttr('direction'),
+          entryDirection: this.lineStartPoint.getAttr('direction'),
           exitPoint: [endPos.x, endPos.y],
-          exitDirection: _arrowEndPoint.getAttr('direction')
+          exitDirection: this.lineEndPoint.getAttr('direction')
         }),
         stroke: lineColor,
         pointerLength: 6,
@@ -554,7 +532,6 @@ class Cade {
       if (this.updateArrowObserve) {
         this.createArrowObserve.next(arrowElement);
       }
-      this.resetActiveStatus(_arrowElementID);
     }
   }
 
@@ -649,9 +626,9 @@ class Cade {
       arrowDragPoint.on('dragmove', event => {
         this.dragPointTouch(event);
       });
-      arrowDragPoint.on('dragend', async event => {
+      arrowDragPoint.on('dragend',  event => {
         const _arrowID = arrowID ? arrowID : event.currentTarget.findAncestor('.arrowElement').id();
-        await this.dragPointEnd(_arrowID);
+         this.dragPointEnd(_arrowID);
         // 将 dragPoint 重置到原来的位置
         const endPos = arrowLine.getAttr('points').slice(-2);
         arrowDragPoint.x(endPos[0]);
@@ -707,9 +684,6 @@ class Cade {
       const _pElement = item.findOne('.blockPointElement');
       _pElement.zIndex(booleanValue ? 3 : 0);
       _pElement.opacity(booleanValue ? 1 : 0);
-      _pElement.find('.blockPointGroup').map(pointItem => {
-        booleanValue ? this.blockPointEventBind(pointItem) : pointItem.off('mouseenter');
-      });
     });
     this.blockLayer.draw();
   }
