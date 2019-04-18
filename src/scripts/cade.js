@@ -19,8 +19,10 @@ class Cade {
     this.focusElementID = null; // 当前选择 element id
     this.createBlockObserve = null; // block 创建监听
     this.updateBlockObserve = null; // block 更新监听
+    this.destroyBlockObserve = null; // block 销毁监听
     this.createArrowObserve = null; // arrow 创建监听
     this.updateArrowObserve = null; // arrow 更新监听
+    this.destroyArrowObserve = null; // block 销毁监听
     this.elementFocusObserve = null; // element激活监听
     this.elementBlurObserve = null; // element释放监听
     this.historyArray = [];
@@ -51,6 +53,13 @@ class Cade {
     });
   }
 
+  // block 销毁观察
+  onDestroyBlock(){
+    return Observable.create(observer => {
+      this.destroyBlockObserve = observer;
+    });
+  }
+
   // arrow 创建观察
   onCreateArrow() {
     return Observable.create(observer => {
@@ -62,6 +71,13 @@ class Cade {
   onUpdateArrow() {
     return Observable.create(observer => {
       this.updateArrowObserve = observer;
+    });
+  }
+
+  // arrow 销毁观察
+  onDestroyArrow(){
+    return Observable.create(observer => {
+      this.destroyArrowObserve = observer;
     });
   }
 
@@ -111,7 +127,12 @@ class Cade {
   }
 
   stageEventBind() {
-    let blockElement, arrowElement, moveStartPoint, arrowCreating, arrowUpdating, blockDragging, focusElement;
+    // block事件绑定
+    this.blockEventBind();
+    // arrow事件绑定
+    this.arrowEventBind();
+    // 绑定鼠标事件
+    let blockElement, arrowElement, moveStartPoint,blockCenter, arrowCreating, arrowUpdating, blockDragging, focusElement;
     this.stage.on('click', event => {
       // 判断当前点击是否是在空白区域，如果是，则清除所有选中状态
       if (event.currentTarget == event.target) {
@@ -135,6 +156,7 @@ class Cade {
           break;
         case 'blockElement':
           blockElement = latestAncestor.ancestor;
+          blockCenter = blockElement.getAbsolutePosition();
           moveStartPoint = {
             x: event.evt.clientX,
             y: event.evt.clientY
@@ -159,7 +181,7 @@ class Cade {
       } else if (arrowUpdating) {
         this.dragPointTouch(event);
       } else if (blockDragging) {
-        this.createBlockDash(event, moveStartPoint, blockElement);
+        this.createBlockDash(event, moveStartPoint, blockElement,blockCenter);
       } else {
         // 根据点击的元素的祖先元素不同，触发不同的方法
         const latestAncestor = this.findLatestAncestor(event);
@@ -363,7 +385,7 @@ class Cade {
         {
           x: 0,
           y: 0,
-          text: '1',
+          text: '',
           width: elementConfig.width,
           height: elementConfig.height,
           fontSize: 14,
@@ -379,6 +401,7 @@ class Cade {
     blockElement.add(this.createBlockPoint(block));
     this.blockLayer.add(blockElement);
     this.blockLayer.draw();
+    this.blockEventBind(blockID);
     this.dbCreate();
     // blockElement 创建反馈
     this.createBlockObserve ? this.createBlockObserve.next(blockElement) : '';
@@ -441,25 +464,34 @@ class Cade {
   }
 
   // 绘制虚线框
-  createBlockDash(event, moveStartPoint, blockElement) {
-    const prevBlockDash = this.actionLayer.findOne('.blockDashElement');
+  createBlockDash(event, moveStartPoint, blockElement,blockCenter) {
+    let prevBlockDash = this.actionLayer.findOne('.blockDashElement');
     if (prevBlockDash) {
-      prevBlockDash.destroy();
+      prevBlockDash.setAttrs({
+        x: blockCenter.x+event.evt.clientX - moveStartPoint.x,
+        y: blockCenter.y+event.evt.clientY - moveStartPoint.y
+      });
+    }else{
+      prevBlockDash = blockElement.findOne('.blockShape').clone({
+        dash: [5],
+        name: 'blockDashElement',
+        fill: 'transparent',
+        x: blockCenter.x,
+        y: blockCenter.y
+      });
+      this.actionLayer.add(prevBlockDash);
     }
-    const blockElementPos = blockElement.getAbsolutePosition();
-    const blockDashElement = blockElement.findOne('.blockShape').clone({
-      dash: [5],
-      name: 'blockDashElement',
-      fill: 'transparent',
-      x: blockElementPos.x,
-      y: blockElementPos.y
-    });
-    blockDashElement.move({
-      x: event.evt.clientX - moveStartPoint.x,
-      y: event.evt.clientY - moveStartPoint.y
-    });
-    this.actionLayer.add(blockDashElement);
     this.actionLayer.draw();
+  }
+
+  blockEventBind(blockID){
+    // 绑定修改文字事件
+    this.blockLayer.find(blockID?`#${blockID}`:'.blockElement').map(item=>{
+      item['changeText'] = (_text)=>{
+        item.findOne('.blockText').text(_text);
+        this.dbCreate();
+      }
+    });
   }
 
   // 删除block
@@ -474,6 +506,7 @@ class Cade {
     blockElement.destroy();
     this.blockLayer.draw();
     this.dbCreate();
+    this.destroyBlockObserve?this.destroyBlockObserve.next(blockID):'';
   }
 
   // 鼠标与blockPoint相交函数
@@ -543,25 +576,41 @@ class Cade {
     if (this.lineStartPoint && this.lineEndPoint) {
       const startPos = this.lineStartPoint.absolutePosition(),
         endPos = this.lineEndPoint.absolutePosition();
-      const arrowElement = new Konva.Arrow({
+      const arrowElement = new Konva.Group({
+        name: 'arrowElement',
+        id: _arrowElementID,
+        startPoint: this.lineStartPoint.getAttr('id'),
+        endPoint: this.lineEndPoint.getAttr('id'),
+      });
+      const arrowShape = new Konva.Arrow({
         points: cornerPoints({
           entryPoint: [startPos.x, startPos.y],
           entryDirection: this.lineStartPoint.getAttr('direction'),
           exitPoint: [endPos.x, endPos.y],
           exitDirection: this.lineEndPoint.getAttr('direction')
         }),
-        startPoint: this.lineStartPoint.getAttr('id'),
-        endPoint: this.lineEndPoint.getAttr('id'),
         stroke: lineColor,
         pointerLength: 6,
         pointerWidth: 5,
-        name: 'arrowElement',
-        id: _arrowElementID,
         lineCap: 'round',
-        lineJoin: 'round'
+        lineJoin: 'round',
+        name:'arrowShape'
       });
+      const shapePoints = arrowShape.getAttr('points');
+      const arrowText = new Konva.Text({
+        x: (shapePoints[4] + shapePoints[2])/2,
+        y: (shapePoints[5] + shapePoints[3])/2,
+        text: '',
+        fontSize: 14,
+        verticalAlign: 'middle',
+        align: 'center',
+        name: 'blockText'
+      });
+      arrowElement.add(arrowShape);
+      arrowElement.add(arrowText);
       this.lineLayer.add(arrowElement);
       this.lineLayer.draw();
+      this.arrowEventBind(_arrowElementID);
       // 将 arrow 的 id 分别添加入起始 block 和结束 block 的 lines 属性中
       this.insertArrowIDToBlockLines(_arrowElementID);
       this.dbCreate();
@@ -571,6 +620,16 @@ class Cade {
       // 监听回调
       this.updateArrowObserve ? this.createArrowObserve.next(arrowElement) : '';
     }
+  }
+
+  arrowEventBind(arrowID){
+    // 绑定修改文字事件
+    this.blockLayer.find(arrowID?`#${arrowID}`:'.arrowElement').map(item=>{
+      item['changeText'] = (_text)=>{
+        item.findOne('.arrowText').text(_text);
+        this.dbCreate();
+      }
+    });
   }
 
   // 更新所连接的 block 内的 lines 属性
@@ -604,11 +663,12 @@ class Cade {
   changeArrowPosition(arrowID, isBlockMove = false) {
     // 更新连接点属性
     const _existLine = this.lineLayer.findOne(`#${arrowID}`);
+    const _arrowShape = _existLine.findOne('.arrowShape');
     const _arrowStartPoint = isBlockMove ? this.blockLayer.findOne(`#${_existLine.getAttr('startPoint')}`) : this.lineStartPoint;
     const _arrowEndPoint = isBlockMove ? this.blockLayer.findOne(`#${_existLine.getAttr('endPoint')}`) : this.lineEndPoint;
     const startPos = _arrowStartPoint.absolutePosition(),
       endPos = _arrowEndPoint.absolutePosition();
-    _existLine.setAttr(
+    _arrowShape.setAttr(
       'points',
       cornerPoints({
         entryPoint: [startPos.x, startPos.y],
@@ -639,6 +699,7 @@ class Cade {
     _arrowElement.destroy();
     this.lineLayer.draw();
     this.dbCreate();
+    this.destroyArrowObserve?this.destroyArrowObserve.next(arrowID):'';
   }
 
   // 设置激活状态
@@ -663,8 +724,9 @@ class Cade {
 
   resetActiveStatusOfArrow() {
     this.lineLayer.find('.arrowElement').map(item => {
-      item.stroke(item.getAttr('id') === this.focusElementID ? blueStroke : lineColor);
-      item.draw();
+      const arrowShape = item.findOne('.arrowShape');
+      arrowShape.stroke(item.getAttr('id') === this.focusElementID ? blueStroke : lineColor);
+      arrowShape.draw();
     });
   }
 
