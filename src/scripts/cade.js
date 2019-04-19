@@ -54,7 +54,7 @@ class Cade {
   }
 
   // block 销毁观察
-  onDestroyBlock(){
+  onDestroyBlock() {
     return Observable.create(observer => {
       this.destroyBlockObserve = observer;
     });
@@ -75,7 +75,7 @@ class Cade {
   }
 
   // arrow 销毁观察
-  onDestroyArrow(){
+  onDestroyArrow() {
     return Observable.create(observer => {
       this.destroyArrowObserve = observer;
     });
@@ -132,13 +132,15 @@ class Cade {
     // arrow事件绑定
     this.arrowEventBind();
     // 绑定鼠标事件
-    let blockElement, arrowElement, moveStartPoint,blockCenter, arrowCreating, arrowUpdating, blockDragging, focusElement;
+    let blockElement, arrowElement, moveStartPoint, blockCenter, arrowCreating, arrowUpdating, blockDragging, focusElement;
     this.stage.on('click', event => {
       // 判断当前点击是否是在空白区域，如果是，则清除所有选中状态
       if (event.currentTarget == event.target) {
-        this.focusElementID = null;
-        this.resetActiveStatus();
-        this.elementBlurObserve.next();
+        if (this.focusElementID) {
+          this.focusElementID = null;
+          this.resetActiveStatus();
+          this.elementBlurObserve.next();
+        }
       }
     });
     this.stage.on('mousedown', event => {
@@ -181,7 +183,7 @@ class Cade {
       } else if (arrowUpdating) {
         this.dragPointTouch(event);
       } else if (blockDragging) {
-        this.createBlockDash(event, moveStartPoint, blockElement,blockCenter);
+        this.createBlockDash(event, moveStartPoint, blockElement, blockCenter);
       } else {
         // 根据点击的元素的祖先元素不同，触发不同的方法
         const latestAncestor = this.findLatestAncestor(event);
@@ -464,14 +466,14 @@ class Cade {
   }
 
   // 绘制虚线框
-  createBlockDash(event, moveStartPoint, blockElement,blockCenter) {
+  createBlockDash(event, moveStartPoint, blockElement, blockCenter) {
     let prevBlockDash = this.actionLayer.findOne('.blockDashElement');
     if (prevBlockDash) {
       prevBlockDash.setAttrs({
-        x: blockCenter.x+event.evt.clientX - moveStartPoint.x,
-        y: blockCenter.y+event.evt.clientY - moveStartPoint.y
+        x: blockCenter.x + event.evt.clientX - moveStartPoint.x,
+        y: blockCenter.y + event.evt.clientY - moveStartPoint.y
       });
-    }else{
+    } else {
       prevBlockDash = blockElement.findOne('.blockShape').clone({
         dash: [5],
         name: 'blockDashElement',
@@ -484,13 +486,13 @@ class Cade {
     this.actionLayer.draw();
   }
 
-  blockEventBind(blockID){
+  blockEventBind(blockID) {
     // 绑定修改文字事件
-    this.blockLayer.find(blockID?`#${blockID}`:'.blockElement').map(item=>{
-      item['changeText'] = (_text)=>{
+    this.blockLayer.find(blockID ? `#${blockID}` : '.blockElement').map(item => {
+      item['changeText'] = _text => {
         item.findOne('.blockText').text(_text);
         this.dbCreate();
-      }
+      };
     });
   }
 
@@ -506,7 +508,7 @@ class Cade {
     blockElement.destroy();
     this.blockLayer.draw();
     this.dbCreate();
-    this.destroyBlockObserve?this.destroyBlockObserve.next(blockID):'';
+    this.destroyBlockObserve ? this.destroyBlockObserve.next(blockID) : '';
   }
 
   // 鼠标与blockPoint相交函数
@@ -580,7 +582,7 @@ class Cade {
         name: 'arrowElement',
         id: _arrowElementID,
         startPoint: this.lineStartPoint.getAttr('id'),
-        endPoint: this.lineEndPoint.getAttr('id'),
+        endPoint: this.lineEndPoint.getAttr('id')
       });
       const arrowShape = new Konva.Arrow({
         points: cornerPoints({
@@ -594,12 +596,12 @@ class Cade {
         pointerWidth: 5,
         lineCap: 'round',
         lineJoin: 'round',
-        name:'arrowShape'
+        name: 'arrowShape'
       });
       const shapePoints = arrowShape.getAttr('points');
       const arrowText = new Konva.Text({
-        x: (shapePoints[4] + shapePoints[2])/2,
-        y: (shapePoints[5] + shapePoints[3])/2,
+        x: (shapePoints[4] + shapePoints[2]) / 2,
+        y: (shapePoints[5] + shapePoints[3]) / 2,
         text: '',
         fontSize: 14,
         verticalAlign: 'middle',
@@ -622,13 +624,13 @@ class Cade {
     }
   }
 
-  arrowEventBind(arrowID){
+  arrowEventBind(arrowID) {
     // 绑定修改文字事件
-    this.blockLayer.find(arrowID?`#${arrowID}`:'.arrowElement').map(item=>{
-      item['changeText'] = (_text)=>{
+    this.blockLayer.find(arrowID ? `#${arrowID}` : '.arrowElement').map(item => {
+      item['changeText'] = _text => {
         item.findOne('.arrowText').text(_text);
         this.dbCreate();
-      }
+      };
     });
   }
 
@@ -699,7 +701,7 @@ class Cade {
     _arrowElement.destroy();
     this.lineLayer.draw();
     this.dbCreate();
-    this.destroyArrowObserve?this.destroyArrowObserve.next(arrowID):'';
+    this.destroyArrowObserve ? this.destroyArrowObserve.next(arrowID) : '';
   }
 
   // 设置激活状态

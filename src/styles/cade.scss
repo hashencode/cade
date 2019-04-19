@@ -121,15 +121,27 @@ $border-base-extra-light: #f2f6fc;
   height: 100%;
   width: calc(100% - 300px);
 }
-#cade-canvas {
-}
-#cade-panel {
-  position: absolute;
-  right: 0;
-  top: 0;
+.cade-panel {
+  float: right;
   width: 300px;
+  padding: 20px;
   height: 100%;
   background-color: white;
   transition: width 0.3s;
   box-shadow: -5px 0 15px -3px rgba(0, 0, 0, 0.15);
+}
+.cade-edit-block {
+  margin-bottom: 20px;
+}
+.cade-edit-title {
+  float: left;
+  width: 20%;
+  font-size: 14px;
+}
+.cade-edit-input {
+  float: left;
+  width: 80%;
+  border: 1px solid $border-base;
+  padding: 5px;
+  border-radius: 5px;
 }
