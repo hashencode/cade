@@ -44,24 +44,38 @@ new Vue({
   data: {
     cadeInstance: new Cade(),
     panelType: 'stage',
-    form: {
-      place_id: '',
-      place_name: '',
-      place_desc: ''
-    }
+    form: {}
   },
   mounted: function() {
     this.cadeInstance.stageInit();
     this.cadeInstance.onElementFocus().subscribe(res => {
-      console.log(res);
-      this.formInit(res);
-      this.form['place_id'] = res.getAttr('id');
+      if (res) {
+        this.panelType = res.getAttr('name');
+        this.formInit(res);
+      } else {
+        this.panelType = 'stage';
+      }
+    });
+    this.cadeInstance.onElementBlur().subscribe(res => {
+      this.panelType = 'stage';
     });
   },
   methods: {
-    formInit: function() {
-      // switch (element) {
-      // }
+    formInit: function(res) {
+      switch (this.panelType) {
+        case 'blockElement':
+          this.form = {
+            place_id: res.getAttr('id'),
+            place_name: '',
+            place_desc: ''
+          };
+          break;
+        case 'arrowElement':
+          this.form = {};
+          break;
+        default:
+          break;
+      }
     },
     updateText: function(event) {
       const fID = this.cadeInstance.focusElementID;
