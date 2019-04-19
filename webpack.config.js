@@ -1,16 +1,21 @@
-const path = require("path");
-const UglifyJsPlugin = require("uglifyjs-webpack-plugin");
-const OpenBrowserPlugin = require("open-browser-webpack-plugin");
-const HtmlWebpackPlugin = require("html-webpack-plugin");
-const MiniCssExtractPlugin = require("mini-css-extract-plugin");
-const CleanWebpackPlugin = require("clean-webpack-plugin");
-const CopyPlugin = require("copy-webpack-plugin");
+const path = require('path');
+const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
+const OpenBrowserPlugin = require('open-browser-webpack-plugin');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const CleanWebpackPlugin = require('clean-webpack-plugin');
+const CopyPlugin = require('copy-webpack-plugin');
 
 module.exports = {
-  entry: "./index.js",
+  entry: './index.js',
   output: {
-    path: path.resolve(__dirname, "./dist"),
-    filename: "js/bundle.[contenthash].js"
+    path: path.resolve(__dirname, './dist'),
+    filename: 'js/bundle.[contenthash].js'
+  },
+  resolve: {
+    alias: {
+      vue$: 'vue/dist/vue.esm.browser.js'
+    }
   },
   module: {
     rules: [
@@ -19,22 +24,22 @@ module.exports = {
         test: /\.js?$/,
         exclude: /node_modules/,
         use: {
-          loader: "babel-loader",
+          loader: 'babel-loader',
           options: {
-            presets: ["env"]
+            presets: ['env']
           }
         }
       },
       // scss loader
       {
         test: /\.(sa|sc|c)ss$/,
-        use: [MiniCssExtractPlugin.loader, "css-loader", "sass-loader"]
+        use: [MiniCssExtractPlugin.loader, 'css-loader', 'sass-loader']
       },
       {
         test: /\.(png|jpg)$/,
         use: [
           {
-            loader: "url-loader",
+            loader: 'url-loader',
             options: {
               limit: 8192
             }
@@ -45,18 +50,18 @@ module.exports = {
   },
   plugins: [
     new MiniCssExtractPlugin({
-      filename: "css/[name].[contenthash].css"
+      filename: 'css/[name].[contenthash].css'
     }),
     new UglifyJsPlugin(),
     new CleanWebpackPlugin(),
     new HtmlWebpackPlugin({
-      title: "Your Project",
-      filename: "index.html",
-      template: "./index.html"
+      title: 'Your Project',
+      filename: 'index.html',
+      template: './index.html'
     }),
-    new CopyPlugin([{ from: path.resolve(__dirname, "./src/assets"), to: "assets" }]),
+    new CopyPlugin([{ from: path.resolve(__dirname, './src/assets'), to: 'assets' }]),
     new OpenBrowserPlugin({
-      url: "http://localhost:8080"
+      url: 'http://localhost:8080'
     })
   ]
 };

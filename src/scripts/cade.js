@@ -3,6 +3,7 @@ import ResizeObserver from 'resize-observer-polyfill';
 import { Observable } from 'rxjs';
 import { cloneDeep } from 'lodash';
 import * as localforage from 'localforage';
+import Vue from 'vue';
 
 const blueStroke = '#5dafff',
   blueFill = '#e7f7ff',
@@ -25,9 +26,7 @@ class Cade {
     this.destroyArrowObserve = null; // block 销毁监听
     this.elementFocusObserve = null; // element激活监听
     this.elementBlurObserve = null; // element释放监听
-    this.historyArray = [];
-    this.historyIndex = -1;
-    this.zoomvalue = 1;
+    this.cadeHeaderVue = null;
   }
 
   // 生成唯一ID
@@ -139,7 +138,7 @@ class Cade {
         if (this.focusElementID) {
           this.focusElementID = null;
           this.resetActiveStatus();
-          this.elementBlurObserve.next();
+          this.elementBlurObserve ? this.elementBlurObserve.next() : '';
         }
       }
     });
@@ -404,9 +403,11 @@ class Cade {
     this.blockLayer.add(blockElement);
     this.blockLayer.draw();
     this.blockEventBind(blockID);
-    this.dbCreate();
+    this.cadeHeaderVue.dbCreate();
     // blockElement 创建反馈
     this.createBlockObserve ? this.createBlockObserve.next(blockElement) : '';
+    this.focusElementID = blockID;
+    this.resetActiveStatus();
   }
 
   // 绘制 blockPoint
@@ -491,7 +492,9 @@ class Cade {
     this.blockLayer.find(blockID ? `#${blockID}` : '.blockElement').map(item => {
       item['changeText'] = _text => {
         item.findOne('.blockText').text(_text);
-        this.dbCreate();
+        item.draw();
+        this.blockLayer.draw();
+        this.cadeHeaderVue.dbCreate();
       };
     });
   }
@@ -507,7 +510,7 @@ class Cade {
     }
     blockElement.destroy();
     this.blockLayer.draw();
-    this.dbCreate();
+    this.cadeHeaderVue.dbCreate();
     this.destroyBlockObserve ? this.destroyBlockObserve.next(blockID) : '';
   }
 
@@ -560,7 +563,7 @@ class Cade {
     // 判断当前是否已经存在虚线，如果存在则更新而不创建
     if (lineByName) {
       lineByName.setAttrs({ points: [linePos.x, linePos.y, cornerX, cornerY, mousePos.offsetX, mousePos.offsetY] });
-      lineByName.getParent().draw();
+      this.actionLayer.draw();
     } else {
       const line = new Konva.Line({
         points: [linePos.x, linePos.y, cornerX, cornerY, mousePos.offsetX, mousePos.offsetY],
@@ -615,12 +618,12 @@ class Cade {
       this.arrowEventBind(_arrowElementID);
       // 将 arrow 的 id 分别添加入起始 block 和结束 block 的 lines 属性中
       this.insertArrowIDToBlockLines(_arrowElementID);
-      this.dbCreate();
+      this.cadeHeaderVue.dbCreate();
+      // 监听回调
+      this.updateArrowObserve ? this.createArrowObserve.next(arrowElement) : '';
       // 激活当前 arrow
       this.focusElementID = _arrowElementID;
       this.resetActiveStatus();
-      // 监听回调
-      this.updateArrowObserve ? this.createArrowObserve.next(arrowElement) : '';
     }
   }
 
@@ -629,7 +632,8 @@ class Cade {
     this.blockLayer.find(arrowID ? `#${arrowID}` : '.arrowElement').map(item => {
       item['changeText'] = _text => {
         item.findOne('.arrowText').text(_text);
-        this.dbCreate();
+        this.blockLayer.draw();
+        this.cadeHeaderVue.dbCreate();
       };
     });
   }
@@ -691,7 +695,7 @@ class Cade {
     this.blockLayer.draw();
     this.lineLayer.draw();
     this.updateArrowObserve ? this.updateArrowObserve.next(_existLine) : '';
-    this.dbCreate();
+    this.cadeHeaderVue.dbCreate();
   }
 
   // 销毁 arrow
@@ -700,14 +704,14 @@ class Cade {
     const _arrowElement = this.lineLayer.findOne(`#${arrowID}`);
     _arrowElement.destroy();
     this.lineLayer.draw();
-    this.dbCreate();
+    this.cadeHeaderVue.dbCreate();
     this.destroyArrowObserve ? this.destroyArrowObserve.next(arrowID) : '';
   }
 
   // 设置激活状态
   resetActiveStatus() {
     if (this.focusElementID) {
-      this.elementFocusObserve.next(this.stage.findOne(`#${this.focusElementID}`));
+      this.elementFocusObserve ? this.elementFocusObserve.next(this.stage.findOne(`#${this.focusElementID}`)) : '';
     }
     this.resetActiveStatusOfBlock();
     this.resetActiveStatusOfArrow();
@@ -732,131 +736,89 @@ class Cade {
     });
   }
 
-  delegate(agent, type, selctor, fn) {
-    //agent.addEventListener(type,fn)如果是这样fn中的this会指向agent
-    agent.addEventListener(
-      type,
-      function(e) {
-        let target = e.target; //target指向实际点击的最里层的元素
-        let ctarget = e.currentTarget; //ctarget会永远指向agent
-        let bubble = true;
-        while (bubble && target != ctarget) {
-          if (target.matches(selctor)) {
-            //改变this的指向
-            bubble = fn.call(target, e) === false ? false : true;
-          }
-          target = target.parentNode; //模拟事件冒泡
-          if (!bubble) {
-            e.preventDefault();
-          }
-        }
-      },
-      false
-    );
-  }
-
-  hasClass(elem, cls) {
-    cls = cls || '';
-    if (cls.replace(/\s/g, '').length == 0) return false; //当cls没有参数时，返回false
-    return new RegExp(' ' + cls + ' ').test(' ' + elem.className + ' ');
-  }
-
-  addClass(ele, cls) {
-    if (!this.hasClass(ele, cls)) {
-      ele.className = ele.className == '' ? cls : ele.className + ' ' + cls;
-    }
-  }
-
-  removeClass(ele, cls) {
-    if (this.hasClass(ele, cls)) {
-      var newClass = ' ' + ele.className.replace(/[\t\r\n]/g, '') + ' ';
-      while (newClass.indexOf(' ' + cls + ' ') >= 0) {
-        newClass = newClass.replace(' ' + cls + ' ', ' ');
-      }
-      ele.className = newClass.replace(/^\s+|\s+$/g, '');
-    }
-  }
-
   // frame
   frameInit() {
+    // 头部
+    const _this = this;
+    this.cadeHeaderVue = new Vue({
+      el: '.cade-header',
+      data: {
+        shapeArray: [
+          { icon: 'icon-xingzhuang-tuoyuanxing', title: '圆形节点', type: 'circle' },
+          { icon: 'icon-xingzhuang-juxing', title: '方形节点', type: 'rect' },
+          { icon: 'icon-cc-block', title: '菱形节点', type: 'polygon' }
+        ],
+        historyIndex: -1,
+        historyArray: []
+      },
+      methods: {
+        // 撤销
+        btnUndo: function() {
+          if (this.historyIndex >= 0) {
+            this.historyIndex -= 1;
+            localforage.getItem(this.historyArray[this.historyIndex]).then(res => {
+              _this.stageImport(res);
+            });
+          }
+        },
+        // 重做
+        btnRedo: function() {
+          const historyLength = this.historyArray.length;
+          if (historyLength > 0 && this.historyIndex < historyLength - 1) {
+            this.historyIndex += 1;
+            localforage.getItem(this.historyArray[this.historyIndex]).then(res => {
+              _this.stageImport(res);
+            });
+          }
+        },
+        // 删除
+        btnDelete: () => {
+          this.elementDelete();
+        },
+        // 清空
+        btnClear: () => {
+          this.stageClear();
+        },
+        // 创建图形
+        btnDragStart: event => {
+          this.elementType = event.target.attributes.elementType.value;
+        },
+        // 数据存储重置
+        dbInit: function() {
+          localforage.clear();
+          this.historyArray = [];
+          this.historyIndex = -1;
+        },
+        // 数据更新
+        dbCreate: function() {
+          if (this.historyIndex !== this.historyArray.length - 1) {
+            this.historyArray.splice(this.historyIndex + 1);
+          }
+          const _storageKey = _this.randomID();
+          localforage.setItem(_storageKey, _this.stage.toJSON(), () => {
+            this.historyArray.push(_storageKey);
+            this.historyIndex += 1;
+            if (this.historyArray.length - 1 > this.historyIndex) {
+              this.historyArray.splice(0, this.historyIndex);
+            }
+          });
+        }
+      }
+    });
     // 重置数据库
-    this.dbInit();
-    // 监听顶部按钮
-    const cadeHeader = document.querySelector('.cade-header');
-    this.delegate(cadeHeader, 'click', '#cade-undo-btn', () => {
-      if (this.historyIndex >= 0) {
-        this.historyIndex -= 1;
-        localforage.getItem(this.historyArray[this.historyIndex]).then(res => {
-          this.stageImport(res);
-        });
-      }
-      this.historyBtnActive();
-    });
-    // 回退
-    this.delegate(cadeHeader, 'click', '#cade-redo-btn', () => {
-      const historyLength = this.historyArray.length;
-      if (historyLength > 0 && this.historyIndex < historyLength - 1) {
-        this.historyIndex += 1;
-        localforage.getItem(this.historyArray[this.historyIndex]).then(res => {
-          this.stageImport(res);
-        });
-      }
-      this.historyBtnActive();
-    });
-    this.historyBtnActive();
-    // 重做
-    this.delegate(cadeHeader, 'click', '#cade-delete-btn', () => {
-      this.elementDelete();
-    });
-    // this.delegate(cadeHeader, 'click', '#cade-save-btn', () => {});
-    // 清空
-    this.delegate(cadeHeader, 'click', '#cade-empty-btn', () => {
-      this.stageClear();
-    });
-    // 缩放
-    this.delegate(cadeHeader, 'click', '#cade-zoom-up', () => {
-      this.zoomvalue += this.zoomvalue < 1.5 ? 0.1 : 0;
-      this.stage.scale({
-        x: this.zoomvalue,
-        y: this.zoomvalue
-      });
-      this.stage.draw();
-    });
-    this.delegate(cadeHeader, 'click', '#cade-zoom-down', () => {
-      this.zoomvalue -= this.zoomvalue > 0.5 ? 0.1 : 0;
-      this.stage.scale({
-        x: this.zoomvalue,
-        y: this.zoomvalue
-      });
-      this.stage.draw();
-    });
-    // 导出数据
-    // this.delegate(cadeHeader, 'click', '#cade-export-btn', () => {
-    //   localStorage.jsonData = this.stage.toJSON();
-    // });
-    // 导入数据
-    // this.delegate(cadeHeader, 'click', '#cade-import-btn', () => {
-    //   this.stageImport();
-    // });
-    // 创建图形
-    this.delegate(cadeHeader, 'dragstart', '.cade-header-btn', event => {
-      this.elementType = event.target.attributes.elementType.value;
-    });
+    this.cadeHeaderVue.dbInit();
     // 监听键盘事件
     document.querySelector('body').addEventListener('keyup', event => {
       if (event.keyCode === 8) {
-        this.elementDelete();
+        if (this.focusElementID && !/ant*/.test(event.target.className)) {
+          this.elementDelete();
+        }
       }
     });
-    // chrome 下需要阻止dragenter和dragover的默认行为才可以触发drop
-    const body = document.querySelector('body');
-    this.delegate(body, 'dragenter', '#cade-content', event => {
+    document.querySelector('#cade-content').addEventListener('dragover', event => {
       event.preventDefault();
     });
-    this.delegate(body, 'dragover', '#cade-content', event => {
-      event.preventDefault();
-    });
-    this.delegate(body, 'drop', '#cade-content', event => {
+    document.querySelector('#cade-content').addEventListener('drop', event => {
       if (event.target.tagName === 'CANVAS') {
         this.createBlock({
           x: event.offsetX,
@@ -866,22 +828,6 @@ class Cade {
         this.stage.draw();
       }
     });
-  }
-
-  historyBtnActive() {
-    const undoBtn = document.querySelector('#cade-undo-btn'),
-      redoBtn = document.querySelector('#cade-redo-btn');
-    const historyLength = this.historyArray.length;
-    if (this.historyIndex < 0) {
-      this.addClass(undoBtn, 'disable');
-    } else {
-      this.removeClass(undoBtn, 'disable');
-    }
-    if (this.historyIndex >= historyLength - 1) {
-      this.addClass(redoBtn, 'disable');
-    } else {
-      this.removeClass(redoBtn, 'disable');
-    }
   }
 
   elementDelete() {
@@ -894,28 +840,6 @@ class Cade {
         this.destroyArrow(this.focusElementID);
         break;
     }
-  }
-
-  // 数据存储重置
-  dbInit() {
-    localforage.clear();
-    this.historyArray = [];
-    this.historyIndex = -1;
-  }
-
-  dbCreate() {
-    if (this.historyIndex !== this.historyArray.length - 1) {
-      this.historyArray.splice(this.historyIndex + 1);
-    }
-    const _storageKey = this.randomID();
-    localforage.setItem(_storageKey, this.stage.toJSON(), () => {
-      this.historyArray.push(_storageKey);
-      this.historyIndex += 1;
-      if (this.historyArray.length - 1 > this.historyIndex) {
-        this.historyArray.splice(0, this.historyIndex);
-      }
-      this.historyBtnActive();
-    });
   }
 }
 

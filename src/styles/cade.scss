@@ -58,11 +58,12 @@ $border-base-extra-light: #f2f6fc;
 }
 .cade-header-btn-group {
   position: relative;
-  float: left;
+  display: inline-block;
   margin-top: 4px;
   padding: 0 10px;
   &:after {
     content: '';
+    display: block !important;
     position: absolute;
     top: 25%;
     right: 0;
@@ -72,22 +73,19 @@ $border-base-extra-light: #f2f6fc;
   }
   &:nth-last-of-type(1) {
     &:after {
-      content: '';
-      display: none;
+      display: none !important;
     }
-  }
-  .cade-header-btn:nth-last-of-type(1) {
-    margin-right: 0;
   }
 }
 .cade-header-btn {
   float: left;
   margin-right: 15px;
-  padding: 5px 7px;
+  padding: 2px 7px;
   font-size: 20px;
   border: 1px solid transparent;
   border-radius: 3px;
   cursor: pointer;
+  color: $text-primary;
   &:hover {
     border: 1px solid $border-base-light;
   }
@@ -129,19 +127,4 @@ $border-base-extra-light: #f2f6fc;
   background-color: white;
   transition: width 0.3s;
   box-shadow: -5px 0 15px -3px rgba(0, 0, 0, 0.15);
-}
-.cade-edit-block {
-  margin-bottom: 20px;
-}
-.cade-edit-title {
-  float: left;
-  width: 20%;
-  font-size: 14px;
-}
-.cade-edit-input {
-  float: left;
-  width: 80%;
-  border: 1px solid $border-base;
-  padding: 5px;
-  border-radius: 5px;
 }

@@ -11,58 +11,42 @@
     <div class="cade">
       <div class="cade-header clearfix">
         <div class="cade-header-btn-group clearfix">
-          <i id="cade-undo-btn" class="cade-header-btn  iconfont icon-shangyibu disable" title="撤销"></i>
-          <i id="cade-redo-btn" class="cade-header-btn  iconfont icon-xiayibu disable" title="重做"></i>
-          <!--          <i id="cade-save-btn" class="cade-header-btn  iconfont icon-save " title="保存"></i>-->
+          <i class="cade-header-btn  iconfont icon-shangyibu" :class="{'disable':historyIndex>0}" @click="btnUndo" title="撤销"></i>
+          <i class="cade-header-btn  iconfont icon-xiayibu disable" @click="btnRedo" title="重做"></i>
         </div>
         <div class="cade-header-btn-group clearfix">
-          <i id="cade-delete-btn" class="cade-header-btn  iconfont icon-trasho " title="删除"></i>
-          <i id="cade-empty-btn" class="cade-header-btn  iconfont icon-clean-up " title="清空"></i>
-          <!--          <i id="cade-zoom-up" class="cade-header-btn  iconfont icon-sousuofangda" title="放大"></i>-->
-          <!--          <i id="cade-zoom-down" class="cade-header-btn  iconfont icon-sousuobianxiao" title="缩小"></i>-->
+          <i class="cade-header-btn  iconfont icon-trasho" @click="btnDelete" title="删除"></i>
+          <i class="cade-header-btn  iconfont icon-clean-up " @click="btnClear" title="清空"></i>
         </div>
-        <!--        <div class="cade-header-btn-group clearfix">-->
-        <!--          <i id="cade-import-btn" class="cade-header-btn  iconfont icon-APIjieru" title="导入数据"></i>-->
-        <!--          <i id="cade-export-btn" class="cade-header-btn  iconfont icon-APIshuchu" title="导出数据"></i>-->
-        <!--        </div>-->
         <div class="cade-header-btn-group clearfix">
           <i
-            id="cade-circle"
-            class="cade-header-btn cade-blockElement iconfont icon-xingzhuang-tuoyuanxing "
+            v-for="shapeItem in shapeArray"
+            class="cade-header-btn cade-blockElement iconfont"
+            :class="shapeItem.icon"
             draggable="true"
-            elementType="circle"
-            title="圆形节点"
-          ></i>
-          <i
-            id="cade-rect"
-            class="cade-header-btn cade-blockElement iconfont icon-xingzhuang-juxing"
-            draggable="true"
-            elementType="rect"
-            title="方形节点"
-          ></i>
-          <i
-            id="cade-polygon"
-            class="cade-header-btn cade-blockElement iconfont icon-cc-block"
-            draggable="true"
-            elementType="polygon"
-            title="菱形节点"
+            :elementType="shapeItem.type"
+            :title="shapeItem.title"
+            @dragstart="btnDragStart"
           ></i>
         </div>
       </div>
       <div class="cade-body">
         <div id="cade-content"></div>
         <div class="cade-panel">
-          <div class="cade-panel-item cade-panel-rect">
-            <div class="cade-edit-block clearfix">
-              <span class="cade-edit-title">标题</span>
-              <input class="cade-edit-input cade-input" type="text" />
-            </div>
-            <div class="cade-edit-block clearfix">
-              <span class="cade-edit-title">标题</span>
-              <input class="cade-edit-input cade-input" type="text" />
-            </div>
+          <div class="cade-panel-item" v-if="panelType==='element'">
+            <a-form>
+              <a-form-item label="ID">
+                <a-input v-model="form.place_id" disabled></a-input>
+              </a-form-item>
+              <a-form-item label="简称">
+                <a-input v-model="form.place_name" @change="updateText"></a-input>
+              </a-form-item>
+              <a-form-item label="描述">
+                <a-input v-model="form.place_desc"></a-input>
+              </a-form-item>
+            </a-form>
           </div>
-          <div class="cade-panel-item cade-panel-arrow"></div>
+          <div class="cade-panel-item" v-if="panelType==='arrow'"></div>
         </div>
       </div>
     </div>
