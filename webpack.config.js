@@ -26,7 +26,7 @@ module.exports = {
         use: {
           loader: 'babel-loader',
           options: {
-            presets: ['env']
+            presets: ['es2015']
           }
         }
       },
@@ -52,7 +52,7 @@ module.exports = {
     new MiniCssExtractPlugin({
       filename: 'css/[name].[contenthash].css'
     }),
-    new UglifyJsPlugin(),
+    // new UglifyJsPlugin(),
     new CleanWebpackPlugin(),
     new HtmlWebpackPlugin({
       title: 'Your Project',
