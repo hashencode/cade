@@ -21,12 +21,12 @@ module.exports = {
     rules: [
       // js loader
       {
-        test: /\.js?$/,
-        exclude: /node_modules/,
+        test: /\.(js|ts)$/,
+        exclude: /node_modules\/(?!(vue|@babel)\/).*/,
         use: {
           loader: 'babel-loader',
           options: {
-            presets: ['es2015']
+            presets: ['@babel/preset-env']
           }
         }
       },
@@ -52,7 +52,7 @@ module.exports = {
     new MiniCssExtractPlugin({
       filename: 'css/[name].[contenthash].css'
     }),
-    // new UglifyJsPlugin(),
+    new UglifyJsPlugin(),
     new CleanWebpackPlugin(),
     new HtmlWebpackPlugin({
       title: 'Your Project',
