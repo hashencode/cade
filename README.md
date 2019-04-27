@@ -4,6 +4,12 @@ cade：一个可视化流程图编辑器，因为目前（2019/04/27）G2的流�
 
 
 
+### Demo
+
+[https://hashencode.github.io/cade/dist/](https://hashencode.github.io/cade/dist/)
+
+
+
 ### 安装
 
 拉取代码安装依赖
