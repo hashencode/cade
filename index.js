@@ -9,7 +9,7 @@ import Vue from 'vue';
 Vue.use(Antd);
 
 // const myCade = new Cade();
-//
+
 // myCade.stageInit();
 // myCade.onCreateBlock().subscribe(res => {
 //   console.log(res);

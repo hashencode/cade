@@ -744,9 +744,9 @@ class Cade {
       el: '.cade-header',
       data: {
         shapeArray: [
-          { icon: 'icon-xingzhuang-tuoyuanxing', title: '圆形节点', type: 'circle' },
-          { icon: 'icon-xingzhuang-juxing', title: '方形节点', type: 'rect' },
-          { icon: 'icon-cc-block', title: '菱形节点', type: 'polygon' }
+          { icon: 'icon-xingzhuang-tuoyuanxing', title: '节点', type: 'circle' },
+          { icon: 'icon-xingzhuang-juxing', title: '过程', type: 'rect' },
+          { icon: 'icon-cc-block', title: '判断', type: 'polygon' }
         ],
         historyIndex: -1,
         historyArray: []
