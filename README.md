@@ -75,7 +75,7 @@ cade.onUpdateBlock().subscribe(res=>{
 ##### cade.onDestroyBlock()
 
 ```
-// 监听块的销毁，返回被销毁的块
+// 监听块的销毁，返回被销毁的块的副本
 cade.onDestroyBlock().subscribe(res=>{
 	console.log(res)
 })
@@ -102,7 +102,7 @@ cade.onUpdateArrow().subscribe(res=>{
 ##### cade.onDestroyArrow()
 
 ```
-// 监听箭头的销毁，返回被销毁的箭头
+// 监听箭头的销毁，返回被销毁的箭头的副本
 cade.onDestroyArrow().subscribe(res=>{
 	console.log(res)
 })
