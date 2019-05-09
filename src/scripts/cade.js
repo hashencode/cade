@@ -748,13 +748,13 @@ class Cade {
           { icon: 'icon-xingzhuang-juxing', title: '过程', type: 'rect' },
           { icon: 'icon-cc-block', title: '判断', type: 'polygon' }
         ],
-        historyIndex: -1,
+        historyIndex: 0,
         historyArray: []
       },
       methods: {
         // 撤销
         btnUndo: function() {
-          if (this.historyIndex >= 0) {
+          if (this.historyIndex > 0) {
             this.historyIndex -= 1;
             localforage.getItem(this.historyArray[this.historyIndex]).then(res => {
               _this.stageImport(res);
@@ -787,7 +787,7 @@ class Cade {
         dbInit: function() {
           localforage.clear();
           this.historyArray = [];
-          this.historyIndex = -1;
+          this.historyIndex = 0;
         },
         // 数据更新
         dbCreate: function() {

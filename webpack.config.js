@@ -61,7 +61,7 @@ module.exports = {
     }),
     new CopyPlugin([{ from: path.resolve(__dirname, './src/assets'), to: 'assets' }]),
     new OpenBrowserPlugin({
-      url: 'http://localhost:8080'
+      url: 'http://localhost:8081'
     })
   ]
 };

@@ -11,7 +11,7 @@
     <div class="cade">
       <div class="cade-header clearfix">
         <div class="cade-header-btn-group clearfix">
-          <i class="cade-header-btn  iconfont icon-shangyibu" :class="{'disable':historyIndex<0}" @click="btnUndo" title="撤销"></i>
+          <i class="cade-header-btn  iconfont icon-shangyibu" :class="{'disable':historyIndex<=0}" @click="btnUndo" title="撤销"></i>
           <i
             class="cade-header-btn  iconfont icon-xiayibu"
             :class="{'disable':historyIndex>=historyArray.length-1}"
