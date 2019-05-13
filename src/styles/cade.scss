@@ -96,6 +96,7 @@ $border-base-extra-light: #f2f6fc;
 }
 .cade-body {
   position: relative;
+  display: flex;
   height: 100%;
   z-index: 50;
 }
@@ -114,17 +115,16 @@ $border-base-extra-light: #f2f6fc;
   background: transparent;
   text-align: center;
 }
-#cade-content {
-  float: left;
+#cadeStage {
+  flex-grow: 1;
   height: 100%;
-  width: calc(100% - 300px);
 }
-.cade-panel {
-  float: right;
-  width: 300px;
-  padding: 20px;
-  height: 100%;
-  background-color: white;
-  transition: width 0.3s;
-  box-shadow: -5px 0 15px -3px rgba(0, 0, 0, 0.15);
-}
+//.cade-panel {
+//  float: right;
+//  width: 300px;
+//  padding: 20px;
+//  height: 100%;
+//  background-color: white;
+//  transition: width 0.3s;
+//  box-shadow: -5px 0 15px -3px rgba(0, 0, 0, 0.15);
+//}

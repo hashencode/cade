@@ -10,64 +10,50 @@
   <body>
     <div class="cade">
       <div class="cade-header clearfix">
-        <div class="cade-header-btn-group clearfix">
-          <i class="cade-header-btn  iconfont icon-shangyibu" :class="{'disable':historyIndex<=0}" @click="btnUndo" title="撤销"></i>
-          <i
-            class="cade-header-btn  iconfont icon-xiayibu"
-            :class="{'disable':historyIndex>=historyArray.length-1}"
-            @click="btnRedo"
-            title="重做"
-          ></i>
-        </div>
-        <div class="cade-header-btn-group clearfix">
-          <i class="cade-header-btn  iconfont icon-trasho" @click="btnDelete" title="删除"></i>
-          <i class="cade-header-btn  iconfont icon-clean-up " @click="btnClear" title="清空"></i>
-        </div>
-        <div class="cade-header-btn-group clearfix">
-          <i
-            v-for="shapeItem in shapeArray"
-            class="cade-header-btn cade-blockElement iconfont"
-            :class="shapeItem.icon"
-            draggable="true"
-            :elementType="shapeItem.type"
-            :title="shapeItem.title"
-            @dragstart="btnDragStart"
-          ></i>
-        </div>
+        <!--        <div class="cade-header-btn-group clearfix">-->
+        <!--          <i class="cade-header-btn  iconfont icon-shangyibu" :class="{'disable':historyIndex<=0}" @click="btnUndo" title="撤销"></i>-->
+        <!--          <i-->
+        <!--            class="cade-header-btn  iconfont icon-xiayibu"-->
+        <!--            :class="{'disable':historyIndex>=historyArray.length-1}"-->
+        <!--            @click="btnRedo"-->
+        <!--            title="重做"-->
+        <!--          ></i>-->
+        <!--        </div>-->
+        <!--        <div class="cade-header-btn-group clearfix">-->
+        <!--          <i class="cade-header-btn  iconfont icon-trasho" @click="btnDelete" title="删除"></i>-->
+        <!--          <i class="cade-header-btn  iconfont icon-clean-up " @click="btnClear" title="清空"></i>-->
+        <!--        </div>-->
+        <!--        <div class="cade-header-btn-group clearfix">-->
+        <!--          <i-->
+        <!--            v-for="shapeItem in shapeArray"-->
+        <!--            class="cade-header-btn cade-blockElement iconfont"-->
+        <!--            :class="shapeItem.icon"-->
+        <!--            draggable="true"-->
+        <!--            :elementType="shapeItem.type"-->
+        <!--            :title="shapeItem.title"-->
+        <!--            @dragstart="btnDragStart"-->
+        <!--          ></i>-->
+        <!--        </div>-->
       </div>
       <div class="cade-body">
-        <div id="cade-content"></div>
-        <div class="cade-panel">
-          <div class="cade-panel-item" v-if="panelType==='blockElement'">
-            <a-form>
-              <a-form-item label="ID">
-                <a-input v-model="form.place_id" disabled></a-input>
-              </a-form-item>
-              <a-form-item label="简称">
-                <a-input v-model="form.place_name" @change="updateText"></a-input>
-              </a-form-item>
-              <a-form-item label="描述">
-                <a-input v-model="form.place_desc"></a-input>
-              </a-form-item>
-            </a-form>
-          </div>
-          <div class="cade-panel-item" v-if="panelType==='arrowElement'">
-            <p>Arrow面板</p>
-            <!--            <a-form>-->
-            <!--              <a-form-item label="ID">-->
-            <!--                <a-input v-model="form.arc_id" disabled></a-input>-->
-            <!--              </a-form-item>-->
-            <!--              <a-form-item label="简称">-->
-            <!--                <a-input v-model="form.arc_name" @change="updateText"></a-input>-->
-            <!--              </a-form-item>-->
-            <!--              <a-form-item label="描述">-->
-            <!--                <a-input v-model="form.arc_desc"></a-input>-->
-            <!--              </a-form-item>-->
-            <!--            </a-form>-->
-          </div>
-        </div>
+        <div id="cadeStage"></div>
+        <!--        <div class="cade-panel">-->
+        <!--          <div class="cade-panel-item" v-if="panelType==='blockElement'">-->
+        <!--            <a-form>-->
+        <!--              <a-form-item label="ID">-->
+        <!--                <a-input v-model="form.place_id" disabled></a-input>-->
+        <!--              </a-form-item>-->
+        <!--              <a-form-item label="简称">-->
+        <!--                <a-input v-model="form.place_name" @change="updateText"></a-input>-->
+        <!--              </a-form-item>-->
+        <!--              <a-form-item label="描述">-->
+        <!--                <a-input v-model="form.place_desc"></a-input>-->
+        <!--              </a-form-item>-->
+        <!--            </a-form>-->
+        <!--          </div>-->
+        <!--        </div>-->
       </div>
     </div>
-    <script src="./assets/konva.min.js"></script>
+    <!--    <script src="./assets/konva.min.js"></script>-->
   </body>
 </html>
