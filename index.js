@@ -4,7 +4,8 @@ import { Cade } from './src/scripts/cade-g6.js';
 
 const cade = new Cade();
 cade.stageInit();
-cade.createRect();
+cade.createRect({ x: 100, y: 100 });
+cade.createDiamond({ x: 200, y: 200 });
 // import './src/scripts/cade.js';
 // import { Cade } from './src/scripts/cade';
 // import Antd from 'ant-design-vue';
