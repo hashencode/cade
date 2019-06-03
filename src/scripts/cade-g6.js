@@ -39,7 +39,7 @@ class Cade {
       height: cadeStageElement.clientHeight,
       modes: {
         default: ['activate-node', 'drag-node', 'drag-canvas', 'zoom-canvas'],
-        drawLine: ['click-add-edge', 'activate-node']
+        lineDraw: ['click-add-edge']
       },
       plugins: [new G6grid()]
     });
@@ -47,7 +47,7 @@ class Cade {
 
   // 绘制方形
   createRect(cfg = {}) {
-    this.graph.add('node', { x: cfg.x, y: cfg.y, shape: 'c-rect', id: 2 });
+    this.graph.add('node', { x: cfg.x, y: cfg.y, shape: 'c-rect', id: this.randomID() });
   }
 
   // 创建菱形
@@ -56,6 +56,7 @@ class Cade {
   }
 
   shapeRegister() {
+    const _this = this;
     const commonConfig = {
       cursor: 'move',
       shadowColor: 'rgba(0,0,0,.1)',
@@ -99,19 +100,10 @@ class Cade {
             cursor: 'move'
           }
         });
-        [{ x: 0, y: -height / 2 }, { x: width / 2, y: 0 }, { x: 0, y: height / 2 }, { x: -width / 2, y: 0 }].forEach(posItem => {
-          group.addShape('circle', {
-            attrs: {
-              x: posItem.x,
-              y: posItem.y,
-              r: 4,
-              fill: blueFill,
-              stroke: blueStroke,
-              cursor: 'crosshair',
-              class: 'anchorPoint',
-              opacity: 0
-            }
-          });
+        _this.anchorDraw({
+          group: group,
+          width: width,
+          height: height
         });
         return shape;
       },
@@ -123,17 +115,15 @@ class Cade {
       setState(name, value, item) {
         const group = item.getContainer();
         const path = group.get('children')[0];
-        if (name === 'active') {
+        if (name === 'groupActive') {
           // 改变背景色
           path.attr('fill', value ? pinkActive : pinkFill);
-          group
-            .findAll(node => {
-              return node.attr('class') === 'anchorPoint';
-            })
-            .map(anchor => {
-              anchor.attr('opacity', value ? 1 : 0);
-            });
         }
+        _this.anchorStateSwitch({
+          name: name,
+          value: value,
+          item: item
+        });
       }
     });
     // 节点：矩形
@@ -170,6 +160,11 @@ class Cade {
             cursor: 'move'
           }
         });
+        _this.anchorDraw({
+          group: group,
+          width: width,
+          height: height
+        });
         return shape;
       },
       // 设置锚点
@@ -178,12 +173,17 @@ class Cade {
       },
       // 设置状态
       setState(name, value, item) {
-        if (name === 'active') {
-          item
-            .getContainer()
-            .get('children')[0]
-            .attr('fill', value ? blueActive : blueFill);
+        const group = item.getContainer();
+        const path = group.get('children')[0];
+        if (name === 'groupActive') {
+          // 改变背景色
+          path.attr('fill', value ? blueActive : blueFill);
         }
+        _this.anchorStateSwitch({
+          name: name,
+          value: value,
+          item: item
+        });
       }
     });
   }
@@ -194,26 +194,52 @@ class Cade {
     G6.registerBehavior('activate-node', {
       getEvents() {
         return {
+          'node:mousedown': 'onNodeMousedown',
+          'node:mouseup': 'onNodeMouseup',
+          'node:mouseenter': 'onNodeMouseenter',
+          'node:mouseleave': 'onNodeMouseleave',
           'node:click': 'onNodeClick',
           'canvas:click': 'onCanvasClick'
         };
       },
+      onNodeMouseup(e) {},
+      onNodeMousedown(e) {
+        this.graph.setMode('lineDraw');
+        console.log(e);
+      },
+      onNodeMouseenter(e) {
+        const item = e.item;
+        // 置点击的节点状态为anchorActive
+        this.graph.setItemState(item, 'anchorActive', true);
+      },
+      onNodeMouseleave(e) {
+        const item = e.item;
+        if (!item.hasState('groupActive')) {
+          this.graph.setItemState(item, 'anchorActive', false);
+        }
+      },
       onNodeClick(e) {
         const item = e.item;
-        if (item.hasState('active')) {
-          this.graph.setItemState(item, 'active', false);
+        if (item.hasState('groupActive')) {
+          this.graph.setItemState(item, 'groupActive', false);
           return;
         }
-        this.removeNodesState();
-        // 置点击的节点状态为active
-        this.graph.setItemState(item, 'active', true);
+        this.removeGroupState();
+        // 置点击的节点状态为groupActive
+        this.graph.setItemState(item, 'groupActive', true);
       },
-      onCanvasClick(e) {
-        this.removeNodesState();
+      onCanvasClick() {
+        this.removeGroupState();
+        this.removeAnchorState();
       },
-      removeNodesState() {
-        this.graph.findAllByState('node', 'active').forEach(node => {
-          this.graph.setItemState(node, 'active', false);
+      removeGroupState() {
+        this.graph.findAllByState('node', 'groupActive').forEach(node => {
+          this.graph.setItemState(node, 'groupActive', false);
+        });
+      },
+      removeAnchorState() {
+        this.graph.findAllByState('node', 'anchorActive').forEach(node => {
+          this.graph.setItemState(node, 'anchorActive', false);
         });
       }
     });
@@ -256,6 +282,43 @@ class Cade {
         }
       }
     });
+  }
+
+  // 绘制锚点
+  anchorDraw(nodeData) {
+    [
+      { x: 0, y: -nodeData.height / 2 },
+      { x: nodeData.width / 2, y: 0 },
+      { x: 0, y: nodeData.height / 2 },
+      { x: -nodeData.width / 2, y: 0 }
+    ].forEach(posItem => {
+      nodeData.group.addShape('circle', {
+        attrs: {
+          x: posItem.x,
+          y: posItem.y,
+          r: 4,
+          fill: blueFill,
+          stroke: blueStroke,
+          cursor: 'crosshair',
+          class: 'anchorPoint',
+          opacity: 0
+        }
+      });
+    });
+  }
+
+  anchorStateSwitch(stateData) {
+    const group = stateData.item.getContainer();
+    if (stateData.name === 'groupActive' || 'anchorActive') {
+      // 改变背景色
+      group
+        .findAll(node => {
+          return node.attr('class') === 'anchorPoint';
+        })
+        .map(anchor => {
+          anchor.attr('opacity', stateData.value ? 1 : 0);
+        });
+    }
   }
 }
 
