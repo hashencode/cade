@@ -37,10 +37,12 @@ class Cade {
       container: 'cadeStage',
       width: cadeStageElement.clientWidth,
       height: cadeStageElement.clientHeight,
+      // 设置模式
       modes: {
         default: ['activate-node', 'drag-node', 'drag-canvas', 'zoom-canvas'],
         lineDraw: ['click-add-edge']
       },
+      // 添加插件
       plugins: [new G6grid()]
     });
   }
@@ -199,25 +201,33 @@ class Cade {
           'node:mouseenter': 'onNodeMouseenter',
           'node:mouseleave': 'onNodeMouseleave',
           'node:click': 'onNodeClick',
+          'anchor:mouseenter':'onAnchorDragenter',
           'canvas:click': 'onCanvasClick'
         };
       },
+      onAnchorDragenter(e){
+        console.log(e)
+      },
       onNodeMouseup(e) {},
       onNodeMousedown(e) {
-        this.graph.setMode('lineDraw');
-        console.log(e);
+        // this.graph.setMode('lineDraw');
+        // console.log(e);
       },
+      // 鼠标移入时高亮当前元素
       onNodeMouseenter(e) {
+        console.log(e)
         const item = e.item;
         // 置点击的节点状态为anchorActive
         this.graph.setItemState(item, 'anchorActive', true);
       },
+      // 鼠标移出时取消当前元素的高亮状态
       onNodeMouseleave(e) {
         const item = e.item;
         if (!item.hasState('groupActive')) {
           this.graph.setItemState(item, 'anchorActive', false);
         }
       },
+      // 点击元素时切换高亮状态
       onNodeClick(e) {
         const item = e.item;
         if (item.hasState('groupActive')) {
@@ -228,6 +238,7 @@ class Cade {
         // 置点击的节点状态为groupActive
         this.graph.setItemState(item, 'groupActive', true);
       },
+      // 点击画布时取消所有锚点和元素的高亮状态
       onCanvasClick() {
         this.removeGroupState();
         this.removeAnchorState();
